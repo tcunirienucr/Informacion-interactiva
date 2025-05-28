@@ -58,7 +58,7 @@ cursos_unicos = cursos_unicos.replace(nombre_amigable).unique()
 cursos_unicos_amigables = sorted(set(nombre_amigable[c] for c in cursos_unicos if c in nombre_amigable))
 
 opciones_display = ["Todos"] + cursos_unicos_amigables
-seleccionados = st.multiselect("Selecciona cursos", opciones_display, default=["Todos"])
+seleccionados = st.sidebar.multiselect("Selecciona cursos", opciones_display, default=["Todos"])
 
 # Manejar selección
 if "Todos" in seleccionados:
