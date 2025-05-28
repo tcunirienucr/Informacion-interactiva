@@ -5,4 +5,8 @@ folium
 streamlit-folium
 plotly
 openpyxl
-streamlit-gsheets
+gspread
+google-auth
+openpyxl
+st-gsheets-connection
+oauth2client
