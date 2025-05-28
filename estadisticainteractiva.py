@@ -9,8 +9,9 @@ import io
 
 #Establecer conexión con el Google Sheets
 #Establecer la conexión con Google Sheets 
-conn = st.connection("gsheets", type=GSheetsConnection)
-df = conn.read(worksheet="mapa v1")
+conn = st.connection("gsheets", type=GSheetsConnection) 
+df = conn.read(worksheet="mapa_v1", usecols=list(range(18)), ttl=120) # Ajusta usecols y ttl según tus necesidades
+
 
 
 # Título de la app
