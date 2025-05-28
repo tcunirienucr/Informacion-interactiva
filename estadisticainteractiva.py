@@ -12,6 +12,19 @@ import io
 conn = st.connection("gsheets", type=GSheetsConnection) 
 df = conn.read(worksheet="mapa_v1", ttl=120) # Ajusta usecols y ttl según tus necesidades
 
+#Nombres amigables de los cantones
+# Diccionario para mostrar nombres amigables
+nombre_amigable = {
+    "admision": "Admisión y lógica",
+    "admisión": "Admisión y lógica",
+    "eplve": "Economía para la vida",
+    "eplvim": "Economía para la vida: indicadores macroeconómicos",
+    "eplvmys": "Economía para la Vida: mercado y sociedad",
+    "excel": "Excel",
+    "excelbasico": "Excel básico",
+    "excelintermedio": "Excel intermedio",
+    "redaccion": "Redacción Consciente"
+}
 
 
 # Título de la app
@@ -33,15 +46,32 @@ except Exception as e:
 # Sidebar para filtros
 st.sidebar.title("Filtros 📌")
 
-# Filtros por curso y año
-cursos_disponibles = sorted(df['CURSO'].dropna().unique())
-cursos_seleccionados = st.sidebar.multiselect("Selecciona cursos", cursos_disponibles, default=cursos_disponibles)
+# Lista de cursos únicos en los datos, normalizados
 
+# Filtros por curso y año
+
+#Cursos
+
+# Lista de cursos únicos en los datos, normalizados
+cursos_unicos = df["CURSO"].str.lower().str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+cursos_unicos = cursos_unicos.replace(nombre_amigable).unique()
+cursos_unicos_amigables = sorted(set(nombre_amigable[c] for c in cursos_unicos if c in nombre_amigable))
+
+opciones_display = ["Todos"] + cursos_unicos_amigables
+seleccionados = st.multiselect("Selecciona cursos", opciones_display, default=["Todos"])
+
+# Manejar selección
+if "Todos" in seleccionados:
+    cursos_filtrados = [k for k, v in nombre_amigable.items()]
+else:
+    cursos_filtrados = [k for k, v in nombre_amigable.items() if v in seleccionados]
+
+#Años
 anios_disponibles = sorted(df['AÑO'].dropna().unique())
 anios_seleccionados = st.sidebar.multiselect("Selecciona años", anios_disponibles, default=anios_disponibles)
 
 # Validaciones para evitar filtros vacíos
-if not cursos_seleccionados:
+if not cursos_filtrados:
     st.error("Debe seleccionar al menos un curso.")
     st.stop()
 if not anios_seleccionados:
@@ -49,7 +79,7 @@ if not anios_seleccionados:
     st.stop()
 
 # Filtrar el dataframe original
-df_filtrado = df[(df['CURSO'].isin(cursos_seleccionados)) & (df['AÑO'].isin(anios_seleccionados))]
+df_filtrado = df[(df['CURSO'].str.lower().isin(cursos_filtrados)) & (df['AÑO'].isin(anios_seleccionados))]
 
 # Agrupar por cantón y contar observaciones (beneficiarios)
 df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
