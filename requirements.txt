@@ -5,6 +5,8 @@ folium
 streamlit-folium
 plotly
 openpyxl
+streamlit
+pandas
 gspread
 google-auth
 openpyxl
