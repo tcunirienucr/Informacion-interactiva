@@ -10,7 +10,7 @@ import io
 #Establecer conexión con el Google Sheets
 #Establecer la conexión con Google Sheets 
 conn = st.connection("gsheets", type=GSheetsConnection) 
-df = conn.read(spreadsheet_id="1jljySUfPuzxFCTCR-D88M1GZCo5u09-Jkdxiymq4EVw", worksheet="mapa_v1", usecols=list(range(18)), ttl=120) # Ajusta usecols y ttl según tus necesidades
+df = conn.read(worksheet="mapa_v1", ttl=120) # Ajusta usecols y ttl según tus necesidades
 
 
 
