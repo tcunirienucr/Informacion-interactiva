@@ -218,12 +218,12 @@ resumen_canton['% Certificado'] = (resumen_canton[1] / resumen_canton['Total']) 
 st.dataframe(resumen_canton)
 
 # Gráfico de barras apiladas
-st.subheader("Gráfico de Barras Apiladas por Curso y Certificado")
-fig_barras = px.bar(df_filtrado, x='CURSO_NORMALIZADO', color='CERTIFICADO', barmode='stack', 
-                    labels={'CURSO_NORMALIZADO': 'Curso', 'CERTIFICADO': 'Certificado'},
-                    title='Cantidad de Personas por Curso y Certificado')
-fig_barras.update_xaxes(tickangle=45)
-st.plotly_chart(fig_barras)
+#st.subheader("Gráfico de Barras Apiladas por Curso y Certificado")
+#fig_barras = px.bar(df_filtrado, x='CURSO_NORMALIZADO', color='CERTIFICADO', barmode='stack', 
+ #                   labels={'CURSO_NORMALIZADO': 'Curso', 'CERTIFICADO': 'Certificado'},
+  #                  title='Cantidad de Personas por Curso y Certificado')
+#fig_barras.update_xaxes(tickangle=45)
+#st.plotly_chart(fig_barras)
 
 # Gráfico de línea
 st.subheader("Gráfico de Línea por Año")
