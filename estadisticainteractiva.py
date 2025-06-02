@@ -173,17 +173,17 @@ st.sidebar.title("Filtros para Estadísticas📊")
 
 # Filtro de cantones
 cantones_disponibles = df["CANTON_DEF"].dropna().unique()
-cantones_seleccionados = st.sidebar.multiselect("Selecciona cantones", cantones_disponibles, default=cantones_disponibles)
+cantones_seleccionados = st.sidebar.multiselect("Selecciona cantones", cantones_disponibles, default=cantones_disponibles, key="filtro_cantones_estadisticas")
 
 # Filtro de cursos
-cursos_seleccionados = st.sidebar.multiselect("Selecciona cursos", opciones_display, default=opciones_display)
+cursos_seleccionados = st.sidebar.multiselect("Selecciona cursos", opciones_display, default=opciones_display, key="filtro_cursos_estadisticas")
 
 # Filtro de años
-anios_seleccionados_estadisticas = st.sidebar.multiselect("Selecciona años", anios_disponibles, default=anios_disponibles)
+anios_seleccionados_estadisticas = st.sidebar.multiselect("Selecciona años", anios_disponibles, default=anios_disponibles, key="filtro_anios_estadisticas")
 
 # Filtro de certificado
 certificados_disponibles = df["CERTIFICADO"].dropna().unique()
-certificados_seleccionados = st.sidebar.multiselect("Selecciona certificado", certificados_disponibles, default=certificados_disponibles)
+certificados_seleccionados = st.sidebar.multiselect("Selecciona certificado", certificados_disponibles, default=certificados_disponibles, key="filtro_certificado_estadisticas")
 
 # Filtrar datos para estadísticas
 df_estadisticas = df[
