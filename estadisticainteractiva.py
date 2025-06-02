@@ -48,7 +48,9 @@ except Exception as e:
 df["CURSO_NORMALIZADO"] = df["CURSO"].str.lower().str.normalize('NFKD') \
     .str.encode('ascii', errors='ignore').str.decode('utf-8')
 
+# ===============================
 # Sidebar - Filtros
+# ===============================
 st.sidebar.title("Filtros para el Mapa📌")
 
 # Filtro de cursos
@@ -56,24 +58,13 @@ cursos_disponibles = df["CURSO_NORMALIZADO"].unique()
 cursos_filtrables = sorted(set(c for c in cursos_disponibles if c in nombre_amigable))
 opciones_display = ["Todos"] + [nombre_amigable[c] for c in cursos_filtrables]
 
-# Estado inicial del multiselect
 seleccionados = st.sidebar.multiselect("Selecciona cursos", opciones_display, default=["Todos"])
-
-# Lógica para hacer "Todos" excluyente
-if "Todos" in seleccionados and len(seleccionados) > 1:
-    st.sidebar.warning("La opción 'Todos' no puede combinarse con otras. Se seleccionará solo 'Todos'.")
-    seleccionados = ["Todos"]
-
-elif "Todos" not in seleccionados and not seleccionados:
-    st.sidebar.warning("Debe seleccionar al menos un curso.")
-    st.stop()
 
 # Determinar cursos filtrados (claves normalizadas)
 if "Todos" in seleccionados:
     cursos_filtrados = cursos_filtrables
 else:
     cursos_filtrados = [k for k, v in nombre_amigable.items() if v in seleccionados]
-
 
 # Filtro de años
 anios_disponibles = sorted(df['AÑO'].dropna().unique())
@@ -144,3 +135,45 @@ st.markdown("""
 # ===============================
 # (Aquí puedes agregar más visualizaciones estadísticas)
 # ===============================
+
+st.header("📈 Análisis Personalizado de Datos")
+
+variables_disponibles = {
+    "Curso (nombre amigable)": "CURSO_NORMALIZADO",
+    "Año": "AÑO",
+    "Cantón": "CANTON_DEF",
+    "Certificado": "CERTIFICADO"
+}
+
+opciones_usuario = st.multiselect(
+    "Selecciona las variables por las que deseas desglosar",
+    list(variables_disponibles.keys()),
+    default=["Curso (nombre amigable)", "Año"]
+)
+
+variables_seleccionadas = [variables_disponibles[var] for var in opciones_usuario]
+
+if variables_seleccionadas:
+    df_estadistica = df_filtrado.copy()
+    df_estadistica['CURSO_NORMALIZADO'] = df_estadistica['CURSO_NORMALIZADO'].map(nombre_amigable)
+
+    conteo = df_estadistica.groupby(variables_seleccionadas).size().reset_index(name='cantidad')
+
+    st.subheader("🔢 Tabla de resumen")
+    st.dataframe(conteo)
+
+if len(variables_seleccionadas) == 1:
+    fig = px.bar(conteo, x=variables_seleccionadas[0], y='cantidad')
+elif len(variables_seleccionadas) == 2:
+    fig = px.bar(conteo, x=variables_seleccionadas[0], y='cantidad', color=variables_seleccionadas[1], barmode='group')
+else:
+    fig = px.sunburst(conteo, path=variables_seleccionadas, values='cantidad')
+
+st.subheader("📊 Gráfico de resumen")
+st.plotly_chart(fig)
+
+df_estadistica['CERTIFICADO'] = df_estadistica['CERTIFICADO'].map({
+    1: "Certificado",
+    0: "No certificado",
+    2: "No aplica"
+})
