@@ -163,7 +163,66 @@ st.markdown("""
 **🔴 20 o más beneficiarios**  
 **⚪ Sin dato**
 """)
+# ===============================
+# Estadísticas descriptivas
+# ===============================
+st.subheader("📊 Estadísticas Descriptivas")
 
-# ===============================
-# (Aquí puedes agregar más visualizaciones estadísticas)
-# ===============================
+# Filtros adicionales
+st.sidebar.title("Filtros para Estadísticas📊")
+
+# Filtro de cantones
+cantones_disponibles = df["CANTON_DEF"].dropna().unique()
+cantones_seleccionados = st.sidebar.multiselect("Selecciona cantones", cantones_disponibles, default=cantones_disponibles)
+
+# Filtro de cursos
+cursos_seleccionados = st.sidebar.multiselect("Selecciona cursos", opciones_display, default=opciones_display)
+
+# Filtro de años
+anios_seleccionados_estadisticas = st.sidebar.multiselect("Selecciona años", anios_disponibles, default=anios_disponibles)
+
+# Filtro de certificado
+certificados_disponibles = df["CERTIFICADO"].dropna().unique()
+certificados_seleccionados = st.sidebar.multiselect("Selecciona certificado", certificados_disponibles, default=certificados_disponibles)
+
+# Filtrar datos para estadísticas
+df_estadisticas = df[
+    (df["CANTON_DEF"].isin(cantones_seleccionados)) &
+    (df["CURSO_NORMALIZADO"].isin(cursos_filtrados)) &
+    (df['AÑO'].isin(anios_seleccionados_estadisticas)) &
+    (df['CERTIFICADO'].isin(certificados_seleccionados))
+]
+
+# Tabla resumen por curso
+st.subheader("Resumen por Curso")
+resumen_curso = df_estadisticas.groupby(['CURSO_NORMALIZADO', 'CERTIFICADO']).size().unstack(fill_value=0)
+resumen_curso['Total'] = resumen_curso.sum(axis=1)
+resumen_curso['% Certificado'] = (resumen_curso[1] / resumen_curso['Total']) * 100
+resumen_curso = resumen_curso.rename(columns=nombre_amigable)
+st.dataframe(resumen_curso)
+
+# Tabla resumen por cantón
+st.subheader("Resumen por Cantón")
+resumen_canton = df_estadisticas.groupby(['CANTON_DEF', 'CERTIFICADO']).size().unstack(fill_value=0)
+resumen_canton['Total'] = resumen_canton.sum(axis=1)
+resumen_canton['% Certificado'] = (resumen_canton[1] / resumen_canton['Total']) * 100
+st.dataframe(resumen_canton)
+
+# Gráfico de barras apiladas por curso y certificado
+st.subheader("Gráfico de Barras Apiladas por Curso y Certificado")
+fig_barras = px.bar(df_estadisticas, x='CURSO_NORMALIZADO', color='CERTIFICADO', barmode='stack', 
+                    labels={'CURSO_NORMALIZADO': 'Curso', 'CERTIFICADO': 'Certificado'},
+                    title='Cantidad de Personas por Curso y Certificado')
+st.plotly_chart(fig_barras)
+
+# Gráfico de línea por año con evolución de participación y aprobación
+st.subheader("Gráfico de Línea por Año")
+df_anual = df_estadisticas.groupby(['AÑO', 'CERTIFICADO']).size().unstack(fill_value=0)
+df_anual['Total'] = df_anual.sum(axis=1)
+df_anual['% Certificado'] = (df_anual[1] / df_anual['Total']) * 100
+fig_linea = px.line(df_anual, x=df_anual.index, y='% Certificado', 
+                    title='Evolución de la Participación y Aprobación por Año',
+                    labels={'AÑO': 'Año', '% Certificado': '% Certificado'})
+st.plotly_chart(fig_linea)
+
+
