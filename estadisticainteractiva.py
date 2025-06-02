@@ -95,6 +95,10 @@ df_filtrado = df[
 ]
 
 df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
+
+# Agrupar por cantón, curso y año para mostrar detalles en el mapa
+df_detalle = df_filtrado.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
+
 gdf_merged = gdf.merge(df_cantonal, how="left", left_on="NAME_2", right_on="CANTON_DEF")
 
 # ===============================
@@ -115,7 +119,28 @@ def color_por_cantidad(cantidad):
         return 'red'
 
 for _, row in gdf_merged.iterrows():
-    color = color_por_cantidad(row['cantidad_beneficiarios'])
+    canton = row['NAME_2']
+    cantidad = row['cantidad_beneficiarios']
+    color = color_por_cantidad(cantidad)
+
+    # Filtrar detalles para este cantón
+    detalles = df_detalle[df_detalle['CANTON_DEF'] == canton]
+
+    if detalles.empty:
+        detalle_html = "<i>Sin datos disponibles</i>"
+    else:
+        detalle_html = "<ul>"
+        for _, d in detalles.iterrows():
+            curso = nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
+            detalle_html += f"<li>{curso} ({int(d['AÑO'])}): {d['conteo']} personas</li>"
+        detalle_html += "</ul>"
+
+    popup_html = f"""
+        <strong>Cantón:</strong> {canton}<br>
+        <strong>Total de beneficiarios:</strong> {cantidad if not pd.isnull(cantidad) else '0'}<br>
+        <strong>Detalle:</strong> {detalle_html}
+    """
+
     folium.GeoJson(
         row['geometry'],
         style_function=lambda feature, color=color: {
@@ -124,11 +149,10 @@ for _, row in gdf_merged.iterrows():
             'weight': 1,
             'fillOpacity': 0.5
         },
-        tooltip=folium.Tooltip(f"""
-            <strong>Cantón:</strong> {row['NAME_2']}<br>
-            <strong>Cantidad de Beneficiarios:</strong> {row['cantidad_beneficiarios']}
-        """)
+        tooltip=folium.Tooltip(f"{canton}"),
+        popup=folium.Popup(popup_html, max_width=300)
     ).add_to(m)
+
 
 st_folium(m, width=800, height=600)
 
