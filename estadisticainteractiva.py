@@ -4,6 +4,7 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
+import plotly.express as px
 
 # ===============================
 # Cargar datos desde Google Sheets
