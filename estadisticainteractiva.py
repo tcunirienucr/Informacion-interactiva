@@ -48,9 +48,7 @@ except Exception as e:
 df["CURSO_NORMALIZADO"] = df["CURSO"].str.lower().str.normalize('NFKD') \
     .str.encode('ascii', errors='ignore').str.decode('utf-8')
 
-# ===============================
 # Sidebar - Filtros
-# ===============================
 st.sidebar.title("Filtros para el Mapa📌")
 
 # Filtro de cursos
@@ -58,7 +56,17 @@ cursos_disponibles = df["CURSO_NORMALIZADO"].unique()
 cursos_filtrables = sorted(set(c for c in cursos_disponibles if c in nombre_amigable))
 opciones_display = ["Todos"] + [nombre_amigable[c] for c in cursos_filtrables]
 
+# Estado inicial del multiselect
 seleccionados = st.sidebar.multiselect("Selecciona cursos", opciones_display, default=["Todos"])
+
+# Lógica para hacer "Todos" excluyente
+if "Todos" in seleccionados and len(seleccionados) > 1:
+    st.sidebar.warning("La opción 'Todos' no puede combinarse con otras. Se seleccionará solo 'Todos'.")
+    seleccionados = ["Todos"]
+
+elif "Todos" not in seleccionados and not seleccionados:
+    st.sidebar.warning("Debe seleccionar al menos un curso.")
+    st.stop()
 
 # Determinar cursos filtrados (claves normalizadas)
 if "Todos" in seleccionados:
