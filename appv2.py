@@ -95,13 +95,15 @@ df_filtrado = df[
 st.subheader("🗺️ Mapa Interactivo")
 
 @st.cache_data
-def preparar_datos_mapa(df_filtrado, gdf):
+def preparar_datos_mapa(df_filtrado, _gdf):
     df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
     df_detalle = df_filtrado.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
-    gdf_merged = gdf.merge(df_cantonal, how="left", left_on="NAME_2", right_on="CANTON_DEF")
+    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on="NAME_2", right_on="CANTON_DEF")
     return gdf_merged, df_detalle
 
+# 👇 CAMBIAR AQUÍ TAMBIÉN
 gdf_merged, df_detalle = preparar_datos_mapa(df_filtrado, gdf)
+
 
 m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
 
