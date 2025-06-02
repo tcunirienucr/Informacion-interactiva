@@ -60,29 +60,61 @@ except Exception as e:
 with st.sidebar:
     st.title("Filtros Globales")
 
+    # ===== Cursos =====
     cursos_disponibles = df["CURSO_NORMALIZADO"].unique()
     cursos_filtrables = sorted(set(c for c in cursos_disponibles if c in nombre_amigable))
-    opciones_display = ["Todos"] + [nombre_amigable[c] for c in cursos_filtrables]
+    opciones_cursos = ["Todos"] + [nombre_amigable[c] for c in cursos_filtrables]
 
-    seleccionados = st.multiselect("Cursos", opciones_display, default=["Todos"])
-    if "Todos" in seleccionados:
+    seleccion_cursos = st.multiselect("Cursos", opciones_cursos, default=["Todos"])
+    if "Todos" in seleccion_cursos:
+        seleccion_cursos = ["Todos"]
+    elif len(seleccion_cursos) > 1 and "Todos" in seleccion_cursos:
+        seleccion_cursos.remove("Todos")
+
+    if "Todos" in seleccion_cursos:
         cursos_filtrados = cursos_filtrables
     else:
-        cursos_filtrados = [k for k, v in nombre_amigable.items() if v in seleccionados]
+        cursos_filtrados = [k for k, v in nombre_amigable.items() if v in seleccion_cursos]
 
+    # ===== Años =====
     anios_disponibles = sorted(df['AÑO'].dropna().unique())
-    anios_seleccionados = st.multiselect("Años", anios_disponibles, default=anios_disponibles)
+    opciones_anios = ["Todos"] + list(anios_disponibles)
 
-    cantones_disponibles = df["CANTON_DEF"].dropna().unique()
-    cantones_seleccionados = st.multiselect("Cantones", cantones_disponibles, default=cantones_disponibles)
+    seleccion_anios = st.multiselect("Años", opciones_anios, default=["Todos"])
+    if "Todos" in seleccion_anios:
+        seleccion_anios = ["Todos"]
+    elif len(seleccion_anios) > 1 and "Todos" in seleccion_anios:
+        seleccion_anios.remove("Todos")
 
-    certificados_disponibles = df["CERTIFICADO"].dropna().unique()
+    if "Todos" in seleccion_anios:
+        anios_seleccionados = anios_disponibles
+    else:
+        anios_seleccionados = seleccion_anios
+
+    # ===== Cantones =====
+    cantones_disponibles = sorted(df["CANTON_DEF"].dropna().unique())
+    opciones_cantones = ["Todos"] + list(cantones_disponibles)
+
+    seleccion_cantones = st.multiselect("Cantones", opciones_cantones, default=["Todos"])
+    if "Todos" in seleccion_cantones:
+        seleccion_cantones = ["Todos"]
+    elif len(seleccion_cantones) > 1 and "Todos" in seleccion_cantones:
+        seleccion_cantones.remove("Todos")
+
+    if "Todos" in seleccion_cantones:
+        cantones_seleccionados = cantones_disponibles
+    else:
+        cantones_seleccionados = seleccion_cantones
+
+    # ===== Certificados =====
+    certificados_disponibles = sorted(df["CERTIFICADO"].dropna().unique())
     certificados_seleccionados = st.multiselect(
         "Certificado",
         certificados_disponibles,
         default=certificados_disponibles,
         help="1: Sí obtuvo certificado y concluyó el curso.\n0: No concluyó el curso, o lo concluyó sin certificarse."
     )
+
 
 
 # ===============================
