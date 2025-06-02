@@ -77,7 +77,13 @@ with st.sidebar:
     cantones_seleccionados = st.multiselect("Cantones", cantones_disponibles, default=cantones_disponibles)
 
     certificados_disponibles = df["CERTIFICADO"].dropna().unique()
-    certificados_seleccionados = st.multiselect("Certificado", certificados_disponibles, default=certificados_disponibles)
+    certificados_seleccionados = st.multiselect(
+        "Certificado",
+        certificados_disponibles,
+        default=certificados_disponibles,
+        help="1: Sí obtuvo certificado y concluyó el curso.\n0: No concluyó el curso, o lo concluyó sin certificarse."
+    )
+
 
 # ===============================
 # Filtrar datos una sola vez
