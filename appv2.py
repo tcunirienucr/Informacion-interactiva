@@ -149,7 +149,7 @@ m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
 
 def color_por_cantidad(cantidad):
     if pd.isnull(cantidad):
-        return 'gray'
+        return 'red'
     elif cantidad == 0:
         return 'red'
     elif cantidad < 20:
