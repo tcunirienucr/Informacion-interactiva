@@ -149,11 +149,11 @@ def color_por_cantidad(cantidad):
     if pd.isnull(cantidad):
         return 'gray'
     elif cantidad == 0:
-        return 'green'
+        return 'red'
     elif cantidad < 20:
         return 'orange'
     else:
-        return 'red'
+        return 'green'
 
 for _, row in gdf_merged.iterrows():
     canton = row['NAME_2']
@@ -191,11 +191,12 @@ for _, row in gdf_merged.iterrows():
 st_folium(m, width=800, height=600)
 
 st.markdown("""
-**🟢 0 beneficiarios**  
+**🟢 20 o más beneficiarios**  
 **🟠 Menos de 20 beneficiarios**  
-**🔴 20 o más beneficiarios**  
+**🔴 0 beneficiarios**  
 **⚪ Sin dato**
 """)
+
 
 # ===============================
 # Estadísticas descriptivas
