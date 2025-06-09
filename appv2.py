@@ -147,20 +147,21 @@ gdf_merged, df_detalle = preparar_datos_mapa(df_filtrado, gdf)
 
 m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
 
-def color_por_cantidad(cantidad):
-    if pd.isnull(cantidad):
-        return 'red'
-    elif cantidad == 0:
+def color_por_cantidad(canton, cantidad, cantones_seleccionados):
+    if canton not in cantones_seleccionados:
+        return 'gray'
+    elif pd.isnull(cantidad) or cantidad == 0:
         return 'red'
     elif cantidad < 20:
         return 'orange'
     else:
         return 'green'
 
+
 for _, row in gdf_merged.iterrows():
     canton = row['NAME_2']
     cantidad = row['cantidad_beneficiarios']
-    color = color_por_cantidad(cantidad)
+    color = color_por_cantidad(canton, cantidad, cantones_seleccionados)
 
     detalles = df_detalle[df_detalle['CANTON_DEF'] == canton]
     if detalles.empty:
@@ -195,9 +196,10 @@ st_folium(m, width=800, height=600)
 st.markdown("""
 **🟢 20 o más beneficiarios**  
 **🟠 Menos de 20 beneficiarios**  
-**🔴 0 beneficiarios**  
-**⚪ Sin dato**
+**🔴 0 beneficiarios o sin dato**  
+**⚪ Cantón no seleccionado**
 """)
+
 
 
 # ===============================
