@@ -256,3 +256,41 @@ st.download_button(
     file_name='datos_filtrados.xlsx',
     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 )
+
+# ===============================
+# Descargar datos colapsados (por Cantón - Curso - Año)
+# ===============================
+st.subheader("📥 Descargar Datos Colapsados (por Cantón - Curso - Año)")
+
+# Permitir que el usuario active la opción
+activar_colapsado = st.checkbox("Quiero descargar los datos colapsados por Cantón - Curso - Año")
+
+if activar_colapsado:
+    # Crear columna combinada Curso + Año
+    df_filtrado['CURSO_AÑO'] = df_filtrado['CURSO_NORMALIZADO'].map(nombre_amigable).fillna(df_filtrado['CURSO_NORMALIZADO'].str.title()) + " " + df_filtrado['AÑO'].astype(str)
+    
+    # Pivotear los datos
+    df_pivot = df_filtrado.pivot_table(
+        index='CANTON_DEF',
+        columns='CURSO_AÑO',
+        values='CERTIFICADO',  # o cualquier columna (usamos .size() para contar)
+        aggfunc='count',
+        fill_value=0
+    ).reset_index()
+
+    # Calcular la columna TOTAL
+    df_pivot['TOTAL'] = df_pivot.drop(columns='CANTON_DEF').sum(axis=1)
+
+    # Reordenar columnas: CANTON_DEF primero, luego cursos + años ordenados alfabéticamente, luego TOTAL
+    columnas_ordenadas = ['CANTON_DEF'] + sorted([c for c in df_pivot.columns if c not in ['CANTON_DEF', 'TOTAL']]) + ['TOTAL']
+    df_pivot = df_pivot[columnas_ordenadas]
+
+    # Preparar para descargar
+    archivo_excel_colapsado = convertir_a_excel(df_pivot)
+
+    st.download_button(
+        label="📥 Descargar datos colapsados en Excel",
+        data=archivo_excel_colapsado,
+        file_name='datos_colapsados.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
