@@ -92,8 +92,10 @@ with st.sidebar:
         anios_seleccionados = seleccion_anios
 
     # ===== Cantones =====
-    cantones_disponibles = sorted(df["CANTON_DEF"].dropna().unique())
+# Usar los 84 cantones desde el geojson
+    cantones_disponibles = sorted(gdf["NAME_2"].dropna().unique())
     opciones_cantones = ["Todos"] + list(cantones_disponibles)
+
 
     seleccion_cantones = st.multiselect("Cantones", opciones_cantones, default=["Todos"])
     if "Todos" in seleccion_cantones:
