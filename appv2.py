@@ -222,14 +222,6 @@ resumen_canton['Total'] = resumen_canton.sum(axis=1)
 resumen_canton['% Certificado'] = (resumen_canton[1] / resumen_canton['Total']) * 100
 st.dataframe(resumen_canton)
 
-# Gráfico de barras apiladas
-#st.subheader("Gráfico de Barras Apiladas por Curso y Certificado")
-#fig_barras = px.bar(df_filtrado, x='CURSO_NORMALIZADO', color='CERTIFICADO', barmode='stack', 
- #                   labels={'CURSO_NORMALIZADO': 'Curso', 'CERTIFICADO': 'Certificado'},
-  #                  title='Cantidad de Personas por Curso y Certificado')
-#fig_barras.update_xaxes(tickangle=45)
-#st.plotly_chart(fig_barras)
-
 # Gráfico de línea
 st.subheader("Gráfico de Línea por Año")
 df_anual = df_filtrado.groupby(['AÑO', 'CERTIFICADO']).size().unstack(fill_value=0)
@@ -239,3 +231,28 @@ fig_linea = px.line(df_anual, x=df_anual.index, y='% Certificado',
                     title='Evolución de la Participación y Aprobación por Año',
                     labels={'AÑO': 'Año', '% Certificado': '% Certificado'})
 st.plotly_chart(fig_linea)
+
+# ===============================
+# Descargar datos filtrados en formato XLSX
+# ===============================
+st.subheader("📥 Descargar Datos Filtrados")
+
+@st.cache_data
+def convertir_a_excel(df):
+    import io
+    from pandas import ExcelWriter
+
+    output = io.BytesIO()
+    with ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='DatosFiltrados')
+    processed_data = output.getvalue()
+    return processed_data
+
+archivo_excel = convertir_a_excel(df_filtrado)
+
+st.download_button(
+    label="📥 Descargar datos filtrados en Excel",
+    data=archivo_excel,
+    file_name='datos_filtrados.xlsx',
+    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+)
