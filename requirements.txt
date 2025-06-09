@@ -5,6 +5,7 @@ folium
 streamlit-folium
 plotly
 openpyxl
+xlsxwriter
 streamlit
 pandas
 gspread
