@@ -6,7 +6,7 @@ from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
-mapa="costaricacantonesv10.geojson"
+mapa="cantones_actualizado_reordered.geojson"
 columna_mapa="NAME_2"
 
 # ===============================
