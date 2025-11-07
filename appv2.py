@@ -46,7 +46,7 @@ df = cargar_datos()
 @st.cache_data
 
 def cargar_geojson():
-    return gpd.read_file("costaricacantonesv10.geojson")
+    return gpd.read_file("Cantones_de_Costa_Rica.geojson")
 
 try:
     gdf = cargar_geojson()
@@ -93,7 +93,7 @@ with st.sidebar:
 
     # ===== Cantones =====
 # Usar los 84 cantones desde el geojson
-    cantones_disponibles = sorted(gdf["NAME_2"].dropna().unique())
+    cantones_disponibles = sorted(gdf["NOM_CANT_1"].dropna().unique())
     opciones_cantones = ["Todos"] + list(cantones_disponibles)
 
 
@@ -138,7 +138,7 @@ st.subheader("🗺️ Mapa Interactivo")
 def preparar_datos_mapa(df_filtrado, _gdf):
     df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
     df_detalle = df_filtrado.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
-    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on="NAME_2", right_on="CANTON_DEF")
+    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on="NOM_CANT_1", right_on="CANTON_DEF")
     return gdf_merged, df_detalle
 
 # 👇 CAMBIAR AQUÍ TAMBIÉN
@@ -159,7 +159,7 @@ def color_por_cantidad(canton, cantidad, cantones_seleccionados):
 
 
 for _, row in gdf_merged.iterrows():
-    canton = row['NAME_2']
+    canton = row['NOM_CANT_1']
     cantidad = row['cantidad_beneficiarios']
     color = color_por_cantidad(canton, cantidad, cantones_seleccionados)
 
