@@ -6,8 +6,8 @@ from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
-ruta_mapa="limitecantonal_5k.json"
-columna_mapa="CANTÓN"
+ruta_mapa="costaricacantonesv10.geojson"
+columna_mapa="NAME_2"
 
 # ===============================
 # Diccionario para mostrar nombres amigables
