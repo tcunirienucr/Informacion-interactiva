@@ -161,7 +161,7 @@ def color_por_cantidad(canton, cantidad, cantones_seleccionados):
 
 
 for _, row in gdf_merged.iterrows():
-    canton = row['CANTÓN']
+    canton = row[columna_mapa]
     cantidad = row['cantidad_beneficiarios']
     color = color_por_cantidad(canton, cantidad, cantones_seleccionados)
 
