@@ -6,9 +6,6 @@ from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
-mapa="limitecantonal_5koriginal.json"
-columna_mapa="CANTÓN"
-
 # ===============================
 # Diccionario para mostrar nombres amigables
 # ===============================
@@ -36,7 +33,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
 def cargar_datos():
-    df = conn.read(worksheet="mapa_más_reciente")
+    df = conn.read(worksheet="mapa_v3")
     df["CURSO_NORMALIZADO"] = df["CURSO"].str.lower().str.normalize('NFKD') \
         .str.encode('ascii', errors='ignore').str.decode('utf-8')
     return df
@@ -49,7 +46,7 @@ df = cargar_datos()
 @st.cache_data
 
 def cargar_geojson():
-    return gpd.read_file(mapa)
+    return gpd.read_file("costaricacantonesv10.geojson")
 
 try:
     gdf = cargar_geojson()
@@ -96,7 +93,7 @@ with st.sidebar:
 
     # ===== Cantones =====
 # Usar los 84 cantones desde el geojson
-    cantones_disponibles = sorted(gdf[columna_mapa].dropna().unique())
+    cantones_disponibles = sorted(gdf["NAME_2"].dropna().unique())
     opciones_cantones = ["Todos"] + list(cantones_disponibles)
 
 
@@ -141,9 +138,10 @@ st.subheader("🗺️ Mapa Interactivo")
 def preparar_datos_mapa(df_filtrado, _gdf):
     df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
     df_detalle = df_filtrado.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
-    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on=columna_mapa, right_on="CANTON_DEF")
+    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on="NAME_2", right_on="CANTON_DEF")
     return gdf_merged, df_detalle
 
+# 👇 CAMBIAR AQUÍ TAMBIÉN
 gdf_merged, df_detalle = preparar_datos_mapa(df_filtrado, gdf)
 
 
@@ -161,7 +159,7 @@ def color_por_cantidad(canton, cantidad, cantones_seleccionados):
 
 
 for _, row in gdf_merged.iterrows():
-    canton = row[columna_mapa]
+    canton = row['NAME_2']
     cantidad = row['cantidad_beneficiarios']
     color = color_por_cantidad(canton, cantidad, cantones_seleccionados)
 
