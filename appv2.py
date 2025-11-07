@@ -7,7 +7,7 @@ from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
 mapa="cantones_actualizado_reordered.geojson"
-columna_mapa="NAME_2"
+columna_mapa="CANTÓN"
 
 # ===============================
 # Diccionario para mostrar nombres amigables
