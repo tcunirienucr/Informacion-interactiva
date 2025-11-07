@@ -6,6 +6,9 @@ from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
+ruta_mapa="costaricacantonesv10.geojson"
+columna_mapa="NAME_2"
+
 # ===============================
 # Diccionario para mostrar nombres amigables
 # ===============================
@@ -46,7 +49,7 @@ df = cargar_datos()
 @st.cache_data
 
 def cargar_geojson():
-    return gpd.read_file("costaricacantonesv10.geojson")
+    return gpd.read_file(ruta_mapa)
 
 try:
     gdf = cargar_geojson()
@@ -93,7 +96,7 @@ with st.sidebar:
 
     # ===== Cantones =====
 # Usar los 84 cantones desde el geojson
-    cantones_disponibles = sorted(gdf["NAME_2"].dropna().unique())
+    cantones_disponibles = sorted(gdf[columna_mapa].dropna().unique())
     opciones_cantones = ["Todos"] + list(cantones_disponibles)
 
 
@@ -138,7 +141,7 @@ st.subheader("🗺️ Mapa Interactivo")
 def preparar_datos_mapa(df_filtrado, _gdf):
     df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
     df_detalle = df_filtrado.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
-    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on="NAME_2", right_on="CANTON_DEF")
+    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on=columna_mapa, right_on="CANTON_DEF")
     return gdf_merged, df_detalle
 
 # 👇 CAMBIAR AQUÍ TAMBIÉN
