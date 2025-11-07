@@ -6,7 +6,7 @@ from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
-ruta_mapa="limitecantonal_5k.geojson"
+ruta_mapa="limitecantonal_5k.json"
 columna_mapa="CANTÓN"
 
 # ===============================
