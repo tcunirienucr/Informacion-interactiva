@@ -153,20 +153,18 @@ m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
 def color_por_cantidad(canton, cantidad, cantones_seleccionados):
     if canton not in cantones_seleccionados:
         return 'gray'
-    elif pd.isnull(cantidad) or cantidad == 0:
+    elif pd.isnull(cantidad) or cantidad ==0:
         return 'red'
-    elif cantidad < 10:
+    elif cantidad >= 1 and cantidad < 10:
         return 'orange'
-    elif cantidad > 10 and cantidad < 20:
+    elif cantidad >= 10 and cantidad < 20:
         return 'yellow'
-    elif cantidad > 20 and cantidad < 50:
+    elif cantidad >= 20 and cantidad < 50:
         return "blue"
-    elif cantidad > 50 and cantidad < 100:
+    elif cantidad >= 50 and cantidad < 100:
         return 'violet'
-    elif cantidad > 100:
+    elif cantidad >= 100:
         return 'cyan'
-    else:
-        return 'green'
 
 
 for _, row in gdf_merged.iterrows():
