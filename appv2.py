@@ -46,7 +46,7 @@ df = cargar_datos()
 @st.cache_data
 
 def cargar_geojson():
-    return gpd.read_file("cantones_actualizado.geojson")
+    return gpd.read_file("cantones_actualizado_reordered.geojson")
 
 try:
     gdf = cargar_geojson()
