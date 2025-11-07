@@ -33,7 +33,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
 def cargar_datos():
-    df = conn.read(worksheet="mapa_v3")
+    df = conn.read(worksheet="mapa_más_reciente")
     df["CURSO_NORMALIZADO"] = df["CURSO"].str.lower().str.normalize('NFKD') \
         .str.encode('ascii', errors='ignore').str.decode('utf-8')
     return df
