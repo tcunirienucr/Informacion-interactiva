@@ -1,6 +1,7 @@
 import streamlit as st
 import branca.colormap as cm
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
@@ -158,28 +159,28 @@ gdf_merged, df_detalle = preparar_datos_mapa_heatmap(df_filtrado, gdf)
 
 # 2. Preparar el mapa base
 m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
+# --- INICIA EL REEMPLAZO (SOLUCIÓN B) ---
 
-# 3. Definir la escala de color (Heatmap Logarítmico)
+# 3. Definir la escala de color (Heatmap por Escalones Logarítmicos)
 max_beneficiarios = gdf_merged['cantidad_color'].max()
 
-# vmin=1 es crucial para la escala logarítmica (log(0) es indefinido)
-min_log = 1 
-
-# Aseguramos que vmax sea siempre mayor que vmin
-if max_beneficiarios <= min_log:
-    max_beneficiarios = min_log + 1 # Asegurar un rango válido
+# Aseguramos un rango válido
+if max_beneficiarios < 10:
+    max_beneficiarios = 10 
     
-# Definimos un color específico para el valor 0
-color_cero = '#ece7f2' # El color más bajo de tu escala original
+# Definimos los colores base
+color_cero = '#ece7f2' # El color más bajo (para 0)
 color_no_seleccionado = '#D3D3D3' # Gris
+colores_escala = ['#a6bddb', '#74a9cf', '#3690c0', '#0570b0', '#034e7b'] # 5 tonos de azul
 
-# La escala logarítmica ahora se aplica de 1 a max
-colormap = cm.LogColormap(
-    colors=['#a6bddb', '#034e7b'], # De azul medio a azul oscuro
-    vmin=min_log, 
-    vmax=max_beneficiarios,
-    caption='Cantidad de Beneficiarios (Escala Logarítmica)'
-)
+# Creamos "escalones" logarítmicos. 
+# Generamos 6 puntos (para 5 rangos) entre 0 (log 1) y el log del máximo.
+try:
+    # np.logspace(start, stop, num) -> crea 'num' puntos entre 10^start y 10^stop
+    pasos = np.logspace(
+        start=0, # 10^0 = 1
+        stop=np.log10(max_beneficiarios), # 10^log10(max) = max
+        num=6 # 6 puntos (ej. 1, 10, 100
 
 # 4. Iterar y aplicar el color del colormap y el popup
 for _, row in gdf_merged.iterrows():
