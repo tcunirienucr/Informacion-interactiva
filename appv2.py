@@ -129,7 +129,6 @@ with st.sidebar:
 df_filtrado = df[
     df["CURSO_NORMALIZADO"].isin(cursos_filtrados) &
     df["AÑO"].isin(anios_seleccionados) &
-    df["CANTON_DEF"].isin(cantones_seleccionados) &
     df["CERTIFICADO"].isin(certificados_seleccionados)
 ]
 
@@ -236,7 +235,7 @@ for _, row in gdf_merged.iterrows():
 m.add_child(colormap)
 
 # 6. Mostrar el mapa en Streamlit
-st_folium(m, width=800, height=600)
+st_folium(m, width=600, height=400)
 
 # --- INICIO DEL BLOQUE DE CÓDIGO DE OBSERVACIONES SIN DATO DE CANTÓN ---
 
@@ -249,7 +248,7 @@ df_sin_dato = df_filtrado[df_filtrado['CANTON_DEF'] == "Sin dato"]
 total_sin_dato = len(df_sin_dato)
 
 # 2. Solo mostrar el expander si hay datos 'Sin dato'
-if total_sin_dato > 0:
+if total_sin_dato >= 0:
     with st.expander(f"ℹ️ **Observaciones 'Sin dato' (fuera del mapa): {total_sin_dato} personas**"):
         
         # 3. Obtener el detalle desde el dataframe 'df_detalle' que ya calculamos para el mapa
