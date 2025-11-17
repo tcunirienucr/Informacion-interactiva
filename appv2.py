@@ -97,9 +97,7 @@ st.title("📊 Mapa y Estadísticas de las personas beneficiarias: TCU Nirien - 
 # ===============================
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=300)
-# --- INICIA REEMPLAZO DE cargar_datos ---
-
+# --- LIMPIEZA: Decorador duplicado eliminado ---
 @st.cache_data(ttl=300)
 def cargar_datos():
     df = conn.read(worksheet="mapa_más_reciente")
@@ -119,31 +117,20 @@ def cargar_datos():
         st.warning("No se encontró la columna 'SEXO' en los datos.")
         df['SEXO_NORMALIZADO'] = 'Sin dato'
     
-    # --- INICIA LA CORRECCIÓN DE AÑO ---
+    # --- Corrección de AÑO (ya estaba en tu código, ¡bien!) ---
     if 'AÑO' in df.columns:
-        # 1. Convertir a numérico. '2022.0' -> 2022.0, 'Sin dato' -> NaN
         df['AÑO'] = pd.to_numeric(df['AÑO'], errors='coerce')
-        
-        # 2. Convertir a tipo Int64 (entero que soporta NaNs)
-        # 2022.0 -> 2022, NaN -> <NA>
         df['AÑO'] = df['AÑO'].astype('Int64')
-        
-        # 3. Convertir a string. 2022 -> '2022', <NA> -> '<NA>'
         df['AÑO'] = df['AÑO'].astype(str)
-        
-        # 4. Reemplazar los strings nulos por 'Sin dato'
         df['AÑO'] = df['AÑO'].replace(['<NA>', 'nan'], 'Sin dato')
     else:
         st.warning("No se encontró la columna 'AÑO' en los datos.")
         df['AÑO'] = 'Sin dato'
-    # --- FIN DE LA CORRECCIÓN DE AÑO ---
 
     if 'CERTIFICADO' in df.columns:
         df['CERTIFICADO'] = df['CERTIFICADO'].astype(str)
 
     return df
-
-# --- FIN DE REEMPLAZO ---
 
 @st.cache_data
 def cargar_geojson():
@@ -228,7 +215,6 @@ with st.sidebar:
 
     # ===== Certificados =====
     certificados_disponibles = sorted(df["CERTIFICADO"].dropna().unique())
-    # Asignar un default que funcione (ej. todas las opciones)
     if 'seleccion_certificados' not in st.session_state:
         st.session_state.seleccion_certificados = certificados_disponibles.copy()
 
@@ -238,7 +224,6 @@ with st.sidebar:
         key='seleccion_certificados',
         help="1: Sí obtuvo certificado y concluyó el curso.\n0: No concluyó el curso, o lo concluyó sin certificarse."
     )
-    # Usar el valor del state para el filtro
     certificados_seleccionados = st.session_state.seleccion_certificados
 
 
@@ -304,10 +289,8 @@ except Exception as e:
 # ===============================
 st.subheader("🗺️ Mapa Interactivo")
 
-# 1. Preparar los datos (Función de caché de DATOS)
 @st.cache_data
 def preparar_datos_mapa_heatmap(_df_filtrado, _cantones_seleccionados, _columna_mapa, _gdf):
-    # Aplicar filtro de cantón AQUÍ para el detalle
     df_filtrado_mapa = _df_filtrado[_df_filtrado['CANTON_DEF'].isin(_cantones_seleccionados)]
     
     df_cantonal = df_filtrado_mapa.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
@@ -318,13 +301,7 @@ def preparar_datos_mapa_heatmap(_df_filtrado, _cantones_seleccionados, _columna_
     
     return gdf_merged, df_detalle
 
-# 2. Generar el mapa (Función de caché de RECURSOS)
-# --- OPTIMIZACIÓN ---
-# Esta función crea el objeto 'm' y lo guarda en caché.
-# Solo se volverá a ejecutar si los datos de entrada (gdf_merged, df_detalle, etc.) cambian.
-@st.cache_resource
-# --- INICIA REEMPLAZO (generar_mapa_folium) ---
-
+# --- LIMPIEZA: Decorador duplicado eliminado ---
 @st.cache_resource
 def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_seleccionados, _nombre_amigable):
     m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
@@ -375,20 +352,18 @@ def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_selec
             color = colormap(cantidad_para_color)
             fill_opacity = 0.7
 
-        # --- INICIO DE CORRECCIÓN DE BUGS 1 y 2 ---
         detalles = _df_detalle[_df_detalle['CANTON_DEF'] == canton]
         
-        # Lógica para 'detalles.empty' corregida
         if detalles.empty:
             detalle_html = "<i>0 beneficiarios (según filtros)</i>" if canton in _cantones_seleccionados else "<i>Cantón no seleccionado</i>"
         else:
             detalle_html = "<ul>"
             for _, d in detalles.iterrows():
                 curso = _nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
+                # --- CORRECCIÓN APLICADA AQUÍ ---
                 # Se eliminó int() para evitar el 'ValueError'
                 detalle_html += f"<li>{curso} ({d['AÑO']}): {d['conteo']} personas</li>"
             detalle_html += "</ul>"
-        # --- FIN DE CORRECCIÓN DE BUGS 1 y 2 ---
 
         popup_html = f"<strong>Cantón:</strong> {canton}<br>" \
                      f"<strong>Total de beneficiarios:</strong> {cantidad_real_popup if not pd.isnull(cantidad_real_popup) else '0'}<br>" \
@@ -410,17 +385,13 @@ def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_selec
     m.add_child(colormap)
     return m
 
-# --- FIN DE REEMPLAZO (generar_mapa_folium) ---
-
-# 3. Llamar a las funciones cacheadas en orden
+# Llamar a las funciones cacheadas en orden
 gdf_merged, df_detalle = preparar_datos_mapa_heatmap(df_filtrado, cantones_seleccionados, columna_mapa, gdf)
 mapa_generado = generar_mapa_folium(gdf_merged, df_detalle, columna_mapa, cantones_seleccionados, nombre_amigable)
 
-# 4. Mostrar el mapa (¡Esta es la única parte que se ejecuta siempre, y es rápido!)
+# Mostrar el mapa
 st_folium(mapa_generado, width=700, height=500, returned_objects=[])
 
-
-# --- INICIA REEMPLAZO (EXPANDER "SIN DATO") ---
 
 # ===============================
 # EXPANDER "SIN DATO" (Corregido)
@@ -431,7 +402,6 @@ total_sin_dato = len(df_sin_dato)
 if total_sin_dato > 0:
     with st.expander(f"ℹ️ **Observaciones 'Sin dato' (fuera del mapa): {total_sin_dato} personas**"):
         
-        # Usamos los datos de df_detalle que ya están filtrados
         detalles_sin_dato = df_detalle[df_detalle['CANTON_DEF'] == "Sin dato"]
         
         if detalles_sin_dato.empty:
@@ -442,29 +412,24 @@ if total_sin_dato > 0:
             for _, d in detalles_sin_dato.iterrows():
                 curso = nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
                 
-                # --- CORRECCIÓN DE BUG 3 ---
-                # Se eliminó int() para evitar el 'ValueError'
+                # --- ¡¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE!! ---
+                # Se eliminó int() para evitar el 'ValueError' con 'Sin dato'
                 detalle_html += f"<li>{curso} ({d['AÑO']}): {d['conteo']} personas</li>"
                 
             detalle_html += "</ul>"
             st.markdown(detalle_html, unsafe_allow_html=True)
-
-# --- FIN DE REEMPLAZO (EXPANDER "SIN DATO") ---
 
 # ===============================
 # ESTADÍSTICAS DESCRIPTIVAS (Optimizadas)
 # ===============================
 st.subheader("📊 Estadísticas Descriptivas")
 
-# --- OPTIMIZACIÓN ---
-# Mover la generación de estadísticas a una función cacheada
 @st.cache_data
 def generar_estadisticas(_df_filtrado, _nombre_amigable):
     # Tabla resumen por curso
     resumen_curso = _df_filtrado.groupby(['CURSO_NORMALIZADO', 'CERTIFICADO']).size().unstack(fill_value=0)
     if not resumen_curso.empty:
         resumen_curso['Total'] = resumen_curso.sum(axis=1)
-        # Evitar división por cero si 'Total' es 0
         resumen_curso['% Certificado'] = resumen_curso.apply(
             lambda row: (row['1'] / row['Total']) * 100 if row['Total'] > 0 and '1' in row else 0, axis=1
         )
@@ -480,15 +445,15 @@ def generar_estadisticas(_df_filtrado, _nombre_amigable):
 
     # Gráfico de línea
     df_anual = _df_filtrado.groupby(['AÑO', 'CERTIFICADO']).size().unstack(fill_value=0)
+    fig_linea = None # Inicializar
     if not df_anual.empty:
         df_anual['Total'] = df_anual.sum(axis=1)
         df_anual['% Certificado'] = df_anual.apply(
             lambda row: (row['1'] / row['Total']) * 100 if row['Total'] > 0 and '1' in row else 0, axis=1
         )
-    
-    fig_linea = px.line(df_anual, x=df_anual.index, y='% Certificado',
-                        title='Evolución de la Aprobación por Año',
-                        labels={'AÑO': 'Año', '% Certificado': '% Certificado'})
+        fig_linea = px.line(df_anual, x=df_anual.index, y='% Certificado',
+                            title='Evolución de la Aprobación por Año',
+                            labels={'AÑO': 'Año', '% Certificado': '% Certificado'})
     
     return resumen_curso, resumen_canton, fig_linea
 
@@ -502,13 +467,14 @@ st.subheader("Resumen por Cantón")
 st.dataframe(resumen_canton)
 
 st.subheader("Gráfico de Línea por Año")
-st.plotly_chart(fig_linea)
+if fig_linea:
+    st.plotly_chart(fig_linea)
+else:
+    st.write("No hay datos disponibles para mostrar el gráfico de línea.")
 
 # ===============================
 # DESCARGAR DATOS (Corregido)
 # ===============================
-
-# Función de conversión (cacheada)
 @st.cache_data
 def convertir_a_excel(_df):
     output = io.BytesIO()
@@ -518,44 +484,48 @@ def convertir_a_excel(_df):
 
 # --- Descarga 1: Datos Filtrados ---
 st.subheader("📥 Descargar Datos Filtrados")
-archivo_excel_filtrado = convertir_a_excel(df_filtrado)
-st.download_button(
-    label="📥 Descargar datos filtrados en Excel",
-    data=archivo_excel_filtrado,
-    file_name='datos_filtrados.xlsx',
-    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-)
+if not df_filtrado.empty:
+    archivo_excel_filtrado = convertir_a_excel(df_filtrado)
+    st.download_button(
+        label="📥 Descargar datos filtrados en Excel",
+        data=archivo_excel_filtrado,
+        file_name='datos_filtrados.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+else:
+    st.info("No hay datos para descargar según los filtros seleccionados.")
 
 # --- Descarga 2: Datos Colapsados ---
 st.subheader("📥 Descargar Datos Colapsados (por Cantón - Curso - Año)")
 activar_colapsado = st.checkbox("Generar datos colapsados para descargar")
 
 if activar_colapsado:
-    st.info("Generando archivo colapsado... esto puede tardar un momento.")
-    
-    # --- CORRECCIÓN DE BUG ---
-    # Usar .copy() para evitar el SettingWithCopyWarning
-    df_para_pivot = df_filtrado.copy()
-    
-    df_para_pivot['CURSO_AÑO'] = df_para_pivot['CURSO_NORMALIZADO'].map(nombre_amigable).fillna(df_para_pivot['CURSO_NORMALIZADO'].str.title()) + " " + df_para_pivot['AÑO'].astype(str)
-    
-    df_pivot = df_para_pivot.pivot_table(
-        index='CANTON_DEF',
-        columns='CURSO_AÑO',
-        values='CERTIFICADO', # Usar una columna que no sea numérica para contar
-        aggfunc='count',
-        fill_value=0
-    ).reset_index()
+    if df_filtrado.empty:
+        st.info("No hay datos para colapsar según los filtros seleccionados.")
+    else:
+        st.info("Generando archivo colapsado... esto puede tardar un momento.")
+        
+        df_para_pivot = df_filtrado.copy()
+        
+        df_para_pivot['CURSO_AÑO'] = df_para_pivot['CURSO_NORMALIZADO'].map(nombre_amigable).fillna(df_para_pivot['CURSO_NORMALIZADO'].str.title()) + " " + df_para_pivot['AÑO'].astype(str)
+        
+        df_pivot = df_para_pivot.pivot_table(
+            index='CANTON_DEF',
+            columns='CURSO_AÑO',
+            values='CERTIFICADO',
+            aggfunc='count',
+            fill_value=0
+        ).reset_index()
 
-    df_pivot['TOTAL'] = df_pivot.drop(columns='CANTON_DEF').sum(axis=1)
-    columnas_ordenadas = ['CANTON_DEF'] + sorted([c for c in df_pivot.columns if c not in ['CANTON_DEF', 'TOTAL']]) + ['TOTAL']
-    df_pivot = df_pivot[columnas_ordenadas]
+        df_pivot['TOTAL'] = df_pivot.drop(columns='CANTON_DEF').sum(axis=1)
+        columnas_ordenadas = ['CANTON_DEF'] + sorted([c for c in df_pivot.columns if c not in ['CANTON_DEF', 'TOTAL']]) + ['TOTAL']
+        df_pivot = df_pivot[columnas_ordenadas]
 
-    archivo_excel_colapsado = convertir_a_excel(df_pivot)
+        archivo_excel_colapsado = convertir_a_excel(df_pivot)
 
-    st.download_button(
-        label="📥 Descargar datos colapsados en Excel",
-        data=archivo_excel_colapsado,
-        file_name='datos_colapsados.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+        st.download_button(
+            label="📥 Descargar datos colapsados en Excel",
+            data=archivo_excel_colapsado,
+            file_name='datos_colapsados.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
