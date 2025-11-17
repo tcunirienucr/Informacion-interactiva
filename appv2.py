@@ -8,9 +8,47 @@ from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
+#FUNCION PARA SELECCIONAR TODOS
+
+# --- INICIA EL NUEVO BLOQUE DE CÓDIGO (FUNCIÓN DE AYUDA) ---
+
+def procesar_filtro_todos(seleccion_cruda, opciones_disponibles_completas):
+    """
+    Procesa la lógica de un multiselect con "Todos" y previene 
+    que "Todos" esté seleccionado con otras opciones.
+    
+    Retorna:
+    - seleccion_limpia: La lista que debe mostrar el widget (ej. ["Todos"] o ["Excel", "Redacción"])
+    - opciones_para_filtrar: La lista de valores para usar en el .isin() de pandas
+    """
+    seleccion_limpia = seleccion_cruda.copy()
+    
+    # 1. Lógica de UX: Limpiar la selección
+    
+    # Si "Todos" está y algo más también, "Todos" se elimina.
+    if "Todos" in seleccion_limpia and len(seleccion_limpia) > 1:
+        seleccion_limpia.remove("Todos")
+        
+    # Si la lista queda vacía (porque se deseleccionó la última opción), 
+    # se fuerza a "Todos".
+    elif not seleccion_limpia:
+        seleccion_limpia = ["Todos"]
+        
+    # Si se seleccionan todas las opciones específicas, es igual a "Todos".
+    elif set(seleccion_limpia) == set(opciones_disponibles_completas):
+        seleccion_limpia = ["Todos"]
+
+    # 2. Lógica de Filtrado: ¿Qué opciones usamos para el dataframe?
+    if "Todos" in seleccion_limpia:
+        opciones_para_filtrar = opciones_disponibles_completas
+    else:
+        opciones_para_filtrar = seleccion_limpia
+            
+    return seleccion_limpia, opciones_para_filtrar
+
+# --- FIN DEL NUEVO BLOQUE DE CÓDIGO ---
+
 #FUNCIONES DE EDAD Y SEXO
-
-
 def clasificar_edad(valor):
     """
     Clasifica el valor de la edad en las categorías deseadas,
@@ -183,61 +221,77 @@ except Exception as e:
     st.error(f"Ocurrió un error cargando los archivos: {e}")
     st.stop()
 
-# ===============================
-# Sidebar - Filtros globales
-# ===============================
+# --- REEMPLAZA TODA LA SECCIÓN "with st.sidebar:" CON ESTO ---
+
 with st.sidebar:
     st.title("Filtros Globales")
 
     # ===== Cursos =====
-    cursos_disponibles = df["CURSO_NORMALIZADO"].unique()
-    cursos_filtrables = sorted(set(c for c in cursos_disponibles if c in nombre_amigable))
-    opciones_cursos = ["Todos"] + [nombre_amigable[c] for c in cursos_filtrables]
-
-    seleccion_cursos = st.multiselect("Cursos", opciones_cursos, default=["Todos"])
-    if "Todos" in seleccion_cursos:
-        seleccion_cursos = ["Todos"]
-    elif len(seleccion_cursos) > 1 and "Todos" in seleccion_cursos:
-        seleccion_cursos.remove("Todos")
-
-    if "Todos" in seleccion_cursos:
-        cursos_filtrados = cursos_filtrables
+    cursos_filtrables_normalizados = sorted(set(df["CURSO_NORMALIZADO"].unique()) & set(nombre_amigable.keys()))
+    cursos_filtrables_amigables = [nombre_amigable[c] for c in cursos_filtrables_normalizados]
+    opciones_cursos_widget = ["Todos"] + cursos_filtrables_amigables
+    
+    # Inicializar el estado de la sesión si no existe
+    if 'seleccion_cursos' not in st.session_state:
+        st.session_state.seleccion_cursos = ["Todos"]
+    
+    seleccion_cursos_cruda = st.multiselect(
+        "Cursos", 
+        opciones_cursos_widget, 
+        default=st.session_state.seleccion_cursos # Usar el estado como default
+    )
+    
+    # Procesar la selección
+    st.session_state.seleccion_cursos, cursos_seleccionados_amigables = procesar_filtro_todos(
+        seleccion_cursos_cruda, 
+        cursos_filtrables_amigables
+    )
+    
+    # Mapeo inverso de nombres amigables a normalizados (para el filtro del df)
+    if "Todos" in st.session_state.seleccion_cursos:
+        cursos_filtrados = cursos_filtrables_normalizados
     else:
-        cursos_filtrados = [k for k, v in nombre_amigable.items() if v in seleccion_cursos]
+        inverso_nombre_amigable = {v: k for k, v in nombre_amigable.items()}
+        cursos_filtrados = [inverso_nombre_amigable[v] for v in cursos_seleccionados_amigables]
 
     # ===== Años =====
     anios_disponibles = sorted(df['AÑO'].dropna().unique())
-    opciones_anios = ["Todos"] + list(anios_disponibles)
-
-    seleccion_anios = st.multiselect("Años", opciones_anios, default=["Todos"])
-    if "Todos" in seleccion_anios:
-        seleccion_anios = ["Todos"]
-    elif len(seleccion_anios) > 1 and "Todos" in seleccion_anios:
-        seleccion_anios.remove("Todos")
-
-    if "Todos" in seleccion_anios:
-        anios_seleccionados = anios_disponibles
-    else:
-        anios_seleccionados = seleccion_anios
+    opciones_anios_widget = ["Todos"] + list(anios_disponibles)
+    
+    if 'seleccion_anios' not in st.session_state:
+        st.session_state.seleccion_anios = ["Todos"]
+        
+    seleccion_anios_cruda = st.multiselect(
+        "Años", 
+        opciones_anios_widget, 
+        default=st.session_state.seleccion_anios
+    )
+    
+    st.session_state.seleccion_anios, anios_seleccionados = procesar_filtro_todos(
+        seleccion_anios_cruda, 
+        anios_disponibles
+    )
 
     # ===== Cantones =====
-# Usar los 84 cantones desde el geojson
     cantones_disponibles = sorted(gdf[columna_mapa].dropna().unique())
-    opciones_cantones = ["Todos"] + list(cantones_disponibles)
-
-
-    seleccion_cantones = st.multiselect("Cantones", opciones_cantones, default=["Todos"])
-    if "Todos" in seleccion_cantones:
-        seleccion_cantones = ["Todos"]
-    elif len(seleccion_cantones) > 1 and "Todos" in seleccion_cantones:
-        seleccion_cantones.remove("Todos")
-
-    if "Todos" in seleccion_cantones:
-        cantones_seleccionados = cantones_disponibles
-    else:
-        cantones_seleccionados = seleccion_cantones
+    opciones_cantones_widget = ["Todos"] + list(cantones_disponibles)
+    
+    if 'seleccion_cantones' not in st.session_state:
+        st.session_state.seleccion_cantones = ["Todos"]
+        
+    seleccion_cantones_cruda = st.multiselect(
+        "Cantones", 
+        opciones_cantones_widget, 
+        default=st.session_state.seleccion_cantones
+    )
+    
+    st.session_state.seleccion_cantones, cantones_seleccionados = procesar_filtro_todos(
+        seleccion_cantones_cruda, 
+        cantones_disponibles
+    )
 
     # ===== Certificados =====
+    # Este filtro no usa "Todos", así que se queda como estaba
     certificados_disponibles = sorted(df["CERTIFICADO"].dropna().unique())
     certificados_seleccionados = st.multiselect(
         "Certificado",
@@ -246,45 +300,45 @@ with st.sidebar:
         help="1: Sí obtuvo certificado y concluyó el curso.\n0: No concluyó el curso, o lo concluyó sin certificarse."
     )
 
-# ... (código del filtro de Certificados)
-    # ... help="1: Sí obtuvo certificado..."
-    # )
-
-    # === INICIO DE NUEVO CÓDIGO ===
-
-    st.divider() # Separador visual
+    st.divider()
 
     # ===== Edades =====
     edades_disponibles = sorted(df['EDAD_CLASIFICADA'].dropna().unique())
-    opciones_edades = ["Todos"] + list(edades_disponibles)
-
-    seleccion_edades = st.multiselect("Grupo de Edad", opciones_edades, default=["Todos"])
+    opciones_edades_widget = ["Todos"] + list(edades_disponibles)
     
-    if "Todos" in seleccion_edades:
-        edades_seleccionadas = edades_disponibles
-    else:
-        edades_seleccionadas = seleccion_edades
-        if "Todos" in seleccion_edades:
-             seleccion_edades.remove("Todos")
-        edades_seleccionadas = seleccion_edades
+    if 'seleccion_edades' not in st.session_state:
+        st.session_state.seleccion_edades = ["Todos"]
+        
+    seleccion_edades_cruda = st.multiselect(
+        "Grupo de Edad", 
+        opciones_edades_widget, 
+        default=st.session_state.seleccion_edades
+    )
+    
+    st.session_state.seleccion_edades, edades_seleccionadas = procesar_filtro_todos(
+        seleccion_edades_cruda, 
+        edades_disponibles
+    )
 
     # ===== Sexo =====
     sexos_disponibles = sorted(df['SEXO_NORMALIZADO'].dropna().unique())
-    opciones_sexos = ["Todos"] + list(sexos_disponibles)
+    opciones_sexos_widget = ["Todos"] + list(sexos_disponibles)
     
-    seleccion_sexos = st.multiselect("Sexo", opciones_sexos, default=["Todos"])
-    
-    if "Todos" in seleccion_sexos:
-        sexos_seleccionados = sexos_disponibles
-    else:
-        sexos_seleccionados = seleccion_sexos
-        if "Todos" in seleccion_sexos:
-            seleccion_sexos.remove("Todos")
-        sexos_seleccionados = seleccion_sexos
+    if 'seleccion_sexos' not in st.session_state:
+        st.session_state.seleccion_sexos = ["Todos"]
         
-    # === FIN DE NUEVO CÓDIGO ===
+    seleccion_sexos_cruda = st.multiselect(
+        "Sexo", 
+        opciones_sexos_widget, 
+        default=st.session_state.seleccion_sexos
+    )
+    
+    st.session_state.seleccion_sexos, sexos_seleccionados = procesar_filtro_todos(
+        seleccion_sexos_cruda, 
+        sexos_disponibles
+    )
 
-# (Fin del bloque "with st.sidebar:")
+# --- FIN DEL REEMPLAZO DEL SIDEBAR ---
 
 
 
@@ -296,14 +350,22 @@ with st.sidebar:
 # ===============================
 # Filtrar datos una sola vez
 # ===============================
+# --- REEMPLAZA ESTE BLOQUE ---
+
+# ===============================
+# Filtrar datos una sola vez
+# ===============================
+# Usamos las variables generadas en el sidebar refactorizado
 df_filtrado = df[
     df["CURSO_NORMALIZADO"].isin(cursos_filtrados) &
     df["AÑO"].isin(anios_seleccionados) &
     df["CERTIFICADO"].isin(certificados_seleccionados) &
-    df["CANTON_DEF"].isin(cantones_seleccionados) &  # <-- CORRECCIÓN IMPORTANTE
-    df["EDAD_CLASIFICADA"].isin(edades_seleccionadas) & # <-- NUEVO
-    df["SEXO_NORMALIZADO"].isin(sexos_seleccionados)   # <-- NUEVO
+    df["CANTON_DEF"].isin(cantones_seleccionados) &
+    df["EDAD_CLASIFICADA"].isin(edades_seleccionadas) &
+    df["SEXO_NORMALIZADO"].isin(sexos_seleccionados)
 ]
+
+# --- FIN DEL REEMPLAZO ---
 
 # --- FIN DEL REEMPLAZO ---
 
