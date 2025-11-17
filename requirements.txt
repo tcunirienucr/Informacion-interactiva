@@ -1,7 +1,7 @@
 streamlit
 geopandas
 pandas
-folium
+folium>=0.14.0
 streamlit-folium
 plotly
 xlsxwriter
