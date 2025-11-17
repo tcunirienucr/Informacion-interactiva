@@ -7,80 +7,116 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
-import io
-from pandas import ExcelWriter
 
-# ===============================
-# FUNCIÓN DE LÓGICA DE FILTROS
-# ===============================
-def procesar_filtro_todos(seleccion_cruda, opciones_disponibles_completas):
-    """
-    Procesa la lógica de un multiselect con "Todos" y previene 
-    que "Todos" esté seleccionado con otras opciones.
-    """
-    seleccion_limpia = seleccion_cruda.copy()
-    
-    # 1. Lógica de UX: Limpiar la selección
-    if "Todos" in seleccion_limpia and len(seleccion_limpia) > 1:
-        seleccion_limpia.remove("Todos")
-    elif not seleccion_limpia:
-        seleccion_limpia = ["Todos"]
-    elif set(seleccion_limpia) == set(opciones_disponibles_completas):
-        seleccion_limpia = ["Todos"]
+#FUNCIONES DE EDAD Y SEXO
 
-    # 2. Lógica de Filtrado
-    if "Todos" in seleccion_limpia:
-        opciones_para_filtrar = opciones_disponibles_completas
-    else:
-        opciones_para_filtrar = seleccion_limpia
-            
-    return seleccion_limpia, opciones_para_filtrar
 
-# ===============================
-# FUNCIONES DE LIMPIEZA DE DATOS
-# ===============================
 def clasificar_edad(valor):
+    """
+    Clasifica el valor de la edad en las categorías deseadas,
+    basado en la lógica que proporcionaste.
+    """
     try:
+        # 1. Manejar valores nulos
         if pd.isna(valor):
             return 'Sin dato'
+
+        # 2. Manejar valores numéricos (enteros o flotantes)
         if isinstance(valor, (int, float)):
-            if 13 <= valor <= 18: return "13 a 18"
-            if 19 <= valor <= 35: return "19 a 35"
-            if 36 <= valor <= 64: return "36 a 64"
-            if 65 <= valor < 98: return "Mayor a 65"
-            if valor in [98, 102, 109]: return "19 a 35"
-            if valor in [99, 105, 106]: return "36 a 64"
-            if valor == 103: return "30 a 39"
-            return 'Sin dato'
+            if 13 <= valor <= 18:
+                return "13 a 18"
+            elif 19 <= valor <= 35:
+                return "19 a 35"
+            elif 36 <= valor <= 64:
+                return "36 a 64"
+            elif valor >= 65 and valor <98:
+                return "Mayor a 65"
+            elif valor == 98:
+                return "19 a 35"
+            elif valor == 102: 
+                return "19 a 35"
+            elif valor == 99:
+                return "36 a 64"
+            elif  valor == 103: 
+                return "30 a 39"
+            elif valor == 105: 
+                return "36 a 64"
+            elif valor == 109:
+                return "19 a 35"
+            elif valor == 106:
+                return "36 a 64"
+            else:
+                # Números fuera de rango (ej. 0-12) se consideran 'Sin dato'
+                return 'Sin dato'
+
+        # 3. Manejar valores de texto
         v = str(valor).strip()
-        if v in ['', 'Información incompleta', 'Sin dato']: return 'Sin dato'
-        if v in ['15-19', '15 a 18', "15-18"]: return '13 a 18'
-        if v in ["19-35", "20-29", "20 a 29", "18 a 35 años", "20 o más", "Más de 20"]: return '19 a 35'
-        if v in ["30-39", "30 a 39"]: return "30 a 39"
-        if v in ["36-64", "40-49", "40 a 49", "50-59", "Más de 50", "36 a 64 años", "Más de 30"]: return '36 a 64'
-        if v in ["Más de 60", "Más de 65"]: return 'Mayor a 65'
+        if v == '' or v == 'Información incompleta':
+            return 'Sin dato'
+
+        if v in ['15-19', '15 a 18', "15-18"]:
+            return '13 a 18'
+        elif v in ["19-35", "20-29", "20 a 29", "18 a 35 años", "20 o más", "Más de 20"]:
+            return '19 a 35'
+        elif v in ["30-39", "30 a 39"]:
+            return "30 a 39"
+        elif v in ["36-64", "40-49", "40 a 49", "50-59", "Más de 50", "36 a 64 años", "Más de 30"]:
+            return '36 a 64'
+        elif v in ["Más de 60", "Más de 65"]:
+            return 'Mayor a 65'
+        elif v in ["Sin dato"]:
+            return "Sin dato"
+
     except:
+        # Cualquier error en la conversión se marca como 'Sin dato'
         return 'Sin dato'
+
+    # 4. Cualquier valor no clasificado se considera 'Sin dato'
     return 'Sin dato'
 
 def normalizar_sexo(valor):
-    if pd.isna(valor): return "Sin dato"
+    """
+    Clasifica el valor de SEXO en las 4 categorías de la imagen:
+    Femenino, Masculino, NR (No Responde), Sin dato (Nulo/Vacío).
+    """
+    # 1. Manejar nulos
+    if pd.isna(valor):
+        return "Sin dato"
+
     v = str(valor).strip()
-    if v == "": return "Sin dato"
-    if v == 'Femenino': return 'Femenino'
-    if v == 'Masculino': return 'Masculino'
-    if v in ['No indica', 'No responde', 'No contesta', 'NR']: return 'NR'
-    if v == 'Sin dato': return 'Sin dato'
-    return 'Sin dato' # "Otro" se trata como "Sin dato"
+
+    # 2. Manejar vacíos
+    if v == "":
+        return "Sin dato"
+
+    # 3. Categorías principales
+    if v == 'Femenino':
+        return 'Femenino'
+    if v == 'Masculino':
+        return 'Masculino'
+
+    # 4. Agrupar "No Responde" (basado en tu lógica)
+    if v in ['No indica', 'No responde', 'No contesta', 'NR']:
+        return 'NR'
+
+    # 5. Manejar "Sin dato" explícito
+    if v == 'Sin dato':
+        return 'Sin dato'
+
+    # 6. Cualquier otro valor (ej. "Otro") se considera 'Sin dato'
+    return 'Sin dato'
+
+#FIN DE FUNCIONES DE EDAD Y SEXO
+
+ruta_mapa="limitecantonal_5k_fixed.geojson"
+columna_mapa="CANTÓN"
 
 # ===============================
-# CONFIGURACIÓN INICIAL
+# Diccionario para mostrar nombres amigables
 # ===============================
-ruta_mapa = "limitecantonal_5k_fixed.geojson"
-columna_mapa = "CANTÓN"
-
 nombre_amigable = {
     "admision": "Admisión y lógica",
+    "admisión": "Admisión y lógica",
     "eplve": "Economía para la vida",
     "eplvim": "Economía para la vida: indicadores macroeconómicos",
     "eplvmys": "Economía para la Vida: mercado y sociedad",
@@ -90,462 +126,459 @@ nombre_amigable = {
     "redaccion": "Redacción Consciente"
 }
 
+# ===============================
+# Título de la app
+# ===============================
 st.title("📊 Mapa y Estadísticas de las personas beneficiarias: TCU Nirien - Habilidades para la Vida - UCR")
 
 # ===============================
-# CARGA DE DATOS (CACHEADO)
+# Cargar datos desde Google Sheets con caché
 # ===============================
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- LIMPIEZA: Decorador duplicado eliminado ---
+@st.cache_data(ttl=300)
+# --- REEMPLAZA ESTE BLOQUE ---
+
 @st.cache_data(ttl=300)
 def cargar_datos():
     df = conn.read(worksheet="mapa_más_reciente")
     
+    # Normalización de Cursos
     df["CURSO_NORMALIZADO"] = df["CURSO"].str.lower().str.normalize('NFKD') \
         .str.encode('ascii', errors='ignore').str.decode('utf-8')
     
+    # === INICIO DE NUEVO CÓDIGO ===
+    # Asumimos que las columnas se llaman 'EDAD' y 'SEXO' en tu Google Sheet
+    # Si se llaman diferente, ajusta 'EDAD' y 'SEXO' aquí.
     if 'EDAD' in df.columns:
         df['EDAD_CLASIFICADA'] = df['EDAD'].apply(clasificar_edad)
     else:
         st.warning("No se encontró la columna 'EDAD' en los datos.")
-        df['EDAD_CLASIFICADA'] = 'Sin dato'
+        df['EDAD_CLASIFICADA'] = 'Sin dato' # Crear columna dummy
         
     if 'SEXO' in df.columns:
         df['SEXO_NORMALIZADO'] = df['SEXO'].apply(normalizar_sexo)
     else:
         st.warning("No se encontró la columna 'SEXO' en los datos.")
-        df['SEXO_NORMALIZADO'] = 'Sin dato'
-    
-    # --- Corrección de AÑO (ya estaba en tu código, ¡bien!) ---
-    if 'AÑO' in df.columns:
-        df['AÑO'] = pd.to_numeric(df['AÑO'], errors='coerce')
-        df['AÑO'] = df['AÑO'].astype('Int64')
-        df['AÑO'] = df['AÑO'].astype(str)
-        df['AÑO'] = df['AÑO'].replace(['<NA>', 'nan'], 'Sin dato')
-    else:
-        st.warning("No se encontró la columna 'AÑO' en los datos.")
-        df['AÑO'] = 'Sin dato'
-
-    # --- CORRECCIÓN DE CERTIFICADO (NUEVO) ---
-    # Para asegurar que '1.0' y '1' se traten como '1'
-    if 'CERTIFICADO' in df.columns:
-        df['CERTIFICADO'] = pd.to_numeric(df['CERTIFICADO'], errors='coerce')
-        df['CERTIFICADO'] = df['CERTIFICADO'].fillna(0) # Asumir NaN como 0
-        df['CERTIFICADO'] = df['CERTIFICADO'].astype(int) # Convertir 1.0 a 1
-        df['CERTIFICADO'] = df['CERTIFICADO'].astype(str) # Convertir 1 a '1'
-    else:
-        st.warning("No se encontró la columna 'CERTIFICADO' en los datos.")
-        df['CERTIFICADO'] = '0'
-
-
+        df['SEXO_NORMALIZADO'] = 'Sin dato' # Crear columna dummy
+    # === FIN DE NUEVO CÓDIGO ===
+        
     return df
 
+df = cargar_datos()
+
+# --- FIN DEL REEMPLAZO ---
+
+# ===============================
+# Cargar geojson con caché
+# ===============================
 @st.cache_data
+
 def cargar_geojson():
     return gpd.read_file(ruta_mapa)
 
 try:
-    df = cargar_datos()
     gdf = cargar_geojson()
 except Exception as e:
     st.error(f"Ocurrió un error cargando los archivos: {e}")
     st.stop()
 
 # ===============================
-# SIDEBAR - FILTROS GLOBALES
+# Sidebar - Filtros globales
 # ===============================
 with st.sidebar:
     st.title("Filtros Globales")
 
     # ===== Cursos =====
-    cursos_filtrables_normalizados = sorted(set(df["CURSO_NORMALIZADO"].unique()) & set(nombre_amigable.keys()))
-    cursos_filtrables_amigables = [nombre_amigable[c] for c in cursos_filtrables_normalizados]
-    opciones_cursos_widget = ["Todos"] + cursos_filtrables_amigables
-    
-    if 'seleccion_cursos' not in st.session_state:
-        st.session_state.seleccion_cursos = ["Todos"]
-    
-    seleccion_limpia, cursos_seleccionados_amigables = procesar_filtro_todos(
-        st.session_state.seleccion_cursos, 
-        cursos_filtrables_amigables
-    )
-    st.session_state.seleccion_cursos = seleccion_limpia
-    
-    if "Todos" in st.session_state.seleccion_cursos:
-        cursos_filtrados = cursos_filtrables_normalizados
-    else:
-        inverso_nombre_amigable = {v: k for k, v in nombre_amigable.items()}
-        cursos_filtrados = [inverso_nombre_amigable[v] for v in cursos_seleccionados_amigables]
+    cursos_disponibles = df["CURSO_NORMALIZADO"].unique()
+    cursos_filtrables = sorted(set(c for c in cursos_disponibles if c in nombre_amigable))
+    opciones_cursos = ["Todos"] + [nombre_amigable[c] for c in cursos_filtrables]
 
-    st.multiselect(
-        "Cursos", 
-        opciones_cursos_widget, 
-        key='seleccion_cursos'
-    )
+    seleccion_cursos = st.multiselect("Cursos", opciones_cursos, default=["Todos"])
+    if "Todos" in seleccion_cursos:
+        seleccion_cursos = ["Todos"]
+    elif len(seleccion_cursos) > 1 and "Todos" in seleccion_cursos:
+        seleccion_cursos.remove("Todos")
+
+    if "Todos" in seleccion_cursos:
+        cursos_filtrados = cursos_filtrables
+    else:
+        cursos_filtrados = [k for k, v in nombre_amigable.items() if v in seleccion_cursos]
 
     # ===== Años =====
     anios_disponibles = sorted(df['AÑO'].dropna().unique())
-    opciones_anios_widget = ["Todos"] + list(anios_disponibles)
-    
-    if 'seleccion_anios' not in st.session_state:
-        st.session_state.seleccion_anios = ["Todos"]
-        
-    seleccion_limpia_anios, anios_seleccionados = procesar_filtro_todos(
-        st.session_state.seleccion_anios, 
-        anios_disponibles
-    )
-    st.session_state.seleccion_anios = seleccion_limpia_anios
-    
-    st.multiselect(
-        "Años", 
-        opciones_anios_widget, 
-        key='seleccion_anios'
-    )
+    opciones_anios = ["Todos"] + list(anios_disponibles)
+
+    seleccion_anios = st.multiselect("Años", opciones_anios, default=["Todos"])
+    if "Todos" in seleccion_anios:
+        seleccion_anios = ["Todos"]
+    elif len(seleccion_anios) > 1 and "Todos" in seleccion_anios:
+        seleccion_anios.remove("Todos")
+
+    if "Todos" in seleccion_anios:
+        anios_seleccionados = anios_disponibles
+    else:
+        anios_seleccionados = seleccion_anios
 
     # ===== Cantones =====
+# Usar los 84 cantones desde el geojson
     cantones_disponibles = sorted(gdf[columna_mapa].dropna().unique())
-    opciones_cantones_widget = ["Todos"] + list(cantones_disponibles)
-    
-    if 'seleccion_cantones' not in st.session_state:
-        st.session_state.seleccion_cantones = ["Todos"]
-        
-    seleccion_limpia_cantones, cantones_seleccionados = procesar_filtro_todos(
-        st.session_state.seleccion_cantones, 
-        cantones_disponibles
-    )
-    st.session_state.seleccion_cantones = seleccion_limpia_cantones
-    
-    st.multiselect(
-        "Cantones", 
-        opciones_cantones_widget, 
-        key='seleccion_cantones'
-    )
+    opciones_cantones = ["Todos"] + list(cantones_disponibles)
+
+
+    seleccion_cantones = st.multiselect("Cantones", opciones_cantones, default=["Todos"])
+    if "Todos" in seleccion_cantones:
+        seleccion_cantones = ["Todos"]
+    elif len(seleccion_cantones) > 1 and "Todos" in seleccion_cantones:
+        seleccion_cantones.remove("Todos")
+
+    if "Todos" in seleccion_cantones:
+        cantones_seleccionados = cantones_disponibles
+    else:
+        cantones_seleccionados = seleccion_cantones
 
     # ===== Certificados =====
-    # Ahora solo debería haber '0' y '1' gracias a la limpieza en cargar_datos
     certificados_disponibles = sorted(df["CERTIFICADO"].dropna().unique())
-    if 'seleccion_certificados' not in st.session_state:
-        st.session_state.seleccion_certificados = certificados_disponibles.copy()
-
-    st.multiselect(
+    certificados_seleccionados = st.multiselect(
         "Certificado",
         certificados_disponibles,
-        key='seleccion_certificados',
+        default=certificados_disponibles,
         help="1: Sí obtuvo certificado y concluyó el curso.\n0: No concluyó el curso, o lo concluyó sin certificarse."
     )
-    certificados_seleccionados = st.session_state.seleccion_certificados
 
+# ... (código del filtro de Certificados)
+    # ... help="1: Sí obtuvo certificado..."
+    # )
 
-    st.divider()
+    # === INICIO DE NUEVO CÓDIGO ===
+
+    st.divider() # Separador visual
 
     # ===== Edades =====
     edades_disponibles = sorted(df['EDAD_CLASIFICADA'].dropna().unique())
-    opciones_edades_widget = ["Todos"] + list(edades_disponibles)
+    opciones_edades = ["Todos"] + list(edades_disponibles)
+
+    seleccion_edades = st.multiselect("Grupo de Edad", opciones_edades, default=["Todos"])
     
-    if 'seleccion_edades' not in st.session_state:
-        st.session_state.seleccion_edades = ["Todos"]
-        
-    seleccion_limpia_edades, edades_seleccionadas = procesar_filtro_todos(
-        st.session_state.seleccion_edades, 
-        edades_disponibles
-    )
-    st.session_state.seleccion_edades = seleccion_limpia_edades
-    
-    st.multiselect(
-        "Grupo de Edad", 
-        opciones_edades_widget, 
-        key='seleccion_edades'
-    )
+    if "Todos" in seleccion_edades:
+        edades_seleccionadas = edades_disponibles
+    else:
+        edades_seleccionadas = seleccion_edades
+        if "Todos" in seleccion_edades:
+             seleccion_edades.remove("Todos")
+        edades_seleccionadas = seleccion_edades
 
     # ===== Sexo =====
     sexos_disponibles = sorted(df['SEXO_NORMALIZADO'].dropna().unique())
-    opciones_sexos_widget = ["Todos"] + list(sexos_disponibles)
+    opciones_sexos = ["Todos"] + list(sexos_disponibles)
     
-    if 'seleccion_sexos' not in st.session_state:
-        st.session_state.seleccion_sexos = ["Todos"]
+    seleccion_sexos = st.multiselect("Sexo", opciones_sexos, default=["Todos"])
+    
+    if "Todos" in seleccion_sexos:
+        sexos_seleccionados = sexos_disponibles
+    else:
+        sexos_seleccionados = seleccion_sexos
+        if "Todos" in seleccion_sexos:
+            seleccion_sexos.remove("Todos")
+        sexos_seleccionados = seleccion_sexos
         
-    seleccion_limpia_sexos, sexos_seleccionados = procesar_filtro_todos(
-        st.session_state.seleccion_sexos, 
-        sexos_disponibles
-    )
-    st.session_state.seleccion_sexos = seleccion_limpia_sexos
-    
-    st.multiselect(
-        "Sexo", 
-        opciones_sexos_widget, 
-        key='seleccion_sexos'
-    )
+    # === FIN DE NUEVO CÓDIGO ===
 
-# ===============================
-# FILTRADO PRINCIPAL DE DATOS
-# ===============================
-try:
-    df_filtrado = df[
-        (df["CURSO_NORMALIZADO"].isin(cursos_filtrados)) &
-        (df["AÑO"].isin(anios_seleccionados)) &
-        (df["CERTIFICADO"].isin(certificados_seleccionados)) &
-        (df["CANTON_DEF"].isin(cantones_seleccionados)) &
-        (df["EDAD_CLASIFICADA"].isin(edades_seleccionadas)) &
-        (df["SEXO_NORMALIZADO"].isin(sexos_seleccionados))
-    ]
-except Exception as e:
-    st.error(f"Error al aplicar filtros: {e}")
-    st.stop()
+# (Fin del bloque "with st.sidebar:")
+
 
 
 # ===============================
-# MAPA INTERACTIVO (OPTIMIZADO)
+# Filtrar datos una sola vez
+# ===============================
+# --- REEMPLAZA ESTE BLOQUE ---
+
+# ===============================
+# Filtrar datos una sola vez
+# ===============================
+df_filtrado = df[
+    df["CURSO_NORMALIZADO"].isin(cursos_filtrados) &
+    df["AÑO"].isin(anios_seleccionados) &
+    df["CERTIFICADO"].isin(certificados_seleccionados) &
+    df["CANTON_DEF"].isin(cantones_seleccionados) &  # <-- CORRECCIÓN IMPORTANTE
+    df["EDAD_CLASIFICADA"].isin(edades_seleccionadas) & # <-- NUEVO
+    df["SEXO_NORMALIZADO"].isin(sexos_seleccionados)   # <-- NUEVO
+]
+
+# --- FIN DEL REEMPLAZO ---
+
+
+# ===============================
+# Mapa interactivo con folium (Versión Heatmap Logarítmico)
 # ===============================
 st.subheader("🗺️ Mapa Interactivo")
 
+# 1. Preparar los datos (Función de caché)
 @st.cache_data
-def preparar_datos_mapa_heatmap(_df_filtrado, _cantones_seleccionados, _columna_mapa, _gdf):
-    df_filtrado_mapa = _df_filtrado[_df_filtrado['CANTON_DEF'].isin(_cantones_seleccionados)]
+def preparar_datos_mapa_heatmap(df_filtrado, _gdf):
+    # Asegurarse de filtrar por los cantones seleccionados ANTES de agrupar
+    df_filtrado_mapa = df_filtrado[df_filtrado['CANTON_DEF'].isin(cantones_seleccionados)]
     
     df_cantonal = df_filtrado_mapa.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
     df_detalle = df_filtrado_mapa.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
     
-    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on=_columna_mapa, right_on="CANTON_DEF")
-    gdf_merged['cantidad_color'] = gdf_merged['cantidad_beneficiarios'].fillna(0)
+    # Hacer el merge solo con los cantones del GeoJSON
+    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on=columna_mapa, right_on="CANTON_DEF")
     
+    # Creamos 'cantidad_color' que es 0 para NaN
+    gdf_merged['cantidad_color'] = gdf_merged['cantidad_beneficiarios'].fillna(0)
     return gdf_merged, df_detalle
 
-# --- LIMPIEZA: Decorador duplicado eliminado ---
-@st.cache_resource
-def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_seleccionados, _nombre_amigable):
-    m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
+gdf_merged, df_detalle = preparar_datos_mapa_heatmap(df_filtrado, gdf)
 
-    max_beneficiarios = _gdf_merged['cantidad_color'].max()
-    if max_beneficiarios < 10:
-        max_beneficiarios = 10
-        
-    color_cero = '#ece7f2'
-    color_no_seleccionado = '#D3D3D3'
-    colores_escala = ['#a6bddb', '#74a9cf', '#3690c0', '#0570b0', '#034e7b']
+# 2. Preparar el mapa base
+m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
+# --- INICIA EL REEMPLAZO (SOLUCIÓN B) ---
 
-    try:
-        pasos = np.logspace(start=0, stop=np.log10(max_beneficiarios), num=6)
-        pasos = [int(round(p)) for p in pasos]
-        pasos = sorted(list(set(pasos)))
-        
-        num_colores_necesarios = len(pasos) - 1
-        if num_colores_necesarios < 1:
-            pasos = [1, 2]
-            colores_escala = [colores_escala[0]]
-        else:
-            colores_escala = colores_escala[:num_colores_necesarios]
-    except Exception:
-        pasos = [1, 10]
-        colores_escala = [colores_escala[0]]
+# --- INICIA EL REEMPLAZO (SOLUCIÓN B) ---
 
-    colormap = cm.StepColormap(
-        colors=colores_escala,
-        index=pasos,
-        vmin=1,
-        vmax=max_beneficiarios,
-        caption='Cantidad de Beneficiarios (Escala por pasos)'
+# 3. Definir la escala de color (Heatmap por Escalones Logarítmicos)
+max_beneficiarios = gdf_merged['cantidad_color'].max()
+
+# Aseguramos un rango válido
+if max_beneficiarios < 10:
+    max_beneficiarios = 10 
+    
+# Definimos los colores base
+color_cero = '#ece7f2' # El color más bajo (para 0)
+color_no_seleccionado = '#D3D3D3' # Gris
+colores_escala = ['#a6bddb', '#74a9cf', '#3690c0', '#0570b0', '#034e7b'] # 5 tonos de azul
+
+# Creamos "escalones" logarítmicos. 
+# Generamos 6 puntos (para 5 rangos) entre 0 (log 1) y el log del máximo.
+try:
+    # np.logspace(start, stop, num) -> crea 'num' puntos entre 10^start y 10^stop
+    pasos = np.logspace(
+        start=0, # 10^0 = 1
+        stop=np.log10(max_beneficiarios), # 10^log10(max) = max
+        num=6 # 6 puntos (ej. 1, 10, 100, 1000...)
     )
+    
+    # Redondeamos a enteros para la leyenda
+    pasos = [int(round(p)) for p in pasos]
+    
+    # Aseguramos que los pasos sean únicos (evita [1, 1, 2, 4...])
+    pasos = sorted(list(set(pasos))) 
+    
+    # Si hay menos pasos que colores (ej. max es muy bajo), reducimos los colores
+    num_colores_necesarios = len(pasos) - 1
+    if num_colores_necesarios < 1:
+        # Fallback por si max_beneficiarios es 1
+        pasos = [1, 2]
+        colores_escala = [colores_escala[0]]
+    else:
+        colores_escala = colores_escala[:num_colores_necesarios]
 
-    for _, row in _gdf_merged.iterrows():
-        canton = row[_columna_mapa]
-        cantidad_real_popup = row['cantidad_beneficiarios']
-        cantidad_para_color = row['cantidad_color']
-        
-        if canton not in _cantones_seleccionados:
-            color = color_no_seleccionado
-            fill_opacity = 0.3
-        elif cantidad_para_color == 0:
-            color = color_cero
-            fill_opacity = 0.7
+except Exception as e:
+    # Fallback si numpy falla (ej. max_beneficiarios es 0)
+    pasos = [1, 10]
+    colores_escala = [colores_escala[0]]
+
+# Creamos el StepColormap
+colormap = cm.StepColormap(
+    colors=colores_escala,
+    index=pasos, # Los "escalones" donde cambia el color
+    vmin=1, 
+    vmax=max_beneficiarios,
+    caption='Cantidad de Beneficiarios (Escala por pasos)'
+)
+
+# La lógica del bucle "for _, row..." (paso 4) 
+# y la lógica de color dentro de él NO CAMBIAN.
+# StepColormap y LogColormap se llaman igual: colormap(valor)
+# Y tu lógica de "color_cero" y "color_no_seleccionado" ya maneja los casos < 1.
+
+
+# 4. Iterar y aplicar el color del colormap y el popup
+for _, row in gdf_merged.iterrows():
+    canton = row[columna_mapa]
+    cantidad_real_popup = row['cantidad_beneficiarios'] # Puede ser NaN
+    cantidad_para_color = row['cantidad_color'] # Es 0 si es NaN
+    
+    # Lógica de color MEJORADA
+    if canton not in cantones_seleccionados:
+        color = color_no_seleccionado
+        fill_opacity = 0.3
+    elif cantidad_para_color == 0:
+        color = color_cero # Color específico para 0
+        fill_opacity = 0.7
+    else:
+        color = colormap(cantidad_para_color) # Aplicar el heatmap logarítmico
+        fill_opacity = 0.7 
+
+    # Lógica de Popup (la mantenemos exactamente igual)
+    detalles = df_detalle[df_detalle['CANTON_DEF'] == canton]
+    if detalles.empty:
+        # Mostrar esto solo si el cantón SÍ fue seleccionado pero no tiene datos
+        if canton in cantones_seleccionados:
+            detalle_html = "<i>0 beneficiarios (según filtros)</i>"
         else:
-            color = colormap(cantidad_para_color)
-            fill_opacity = 0.7
+            detalle_html = "<i>Cantón no seleccionado</i>"
+    else:
+        detalle_html = "<ul>"
+        for _, d in detalles.iterrows():
+            curso = nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
+            detalle_html += f"<li>{curso} ({int(d['AÑO'])}): {d['conteo']} personas</li>"
+        detalle_html += "</ul>"
 
-        detalles = _df_detalle[_df_detalle['CANTON_DEF'] == canton]
-        
-        if detalles.empty:
-            detalle_html = "<i>0 beneficiarios (según filtros)</i>" if canton in _cantones_seleccionados else "<i>Cantón no seleccionado</i>"
-        else:
-            detalle_html = "<ul>"
-            for _, d in detalles.iterrows():
-                curso = _nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
-                # --- CORRECCIÓN APLICADA AQUÍ ---
-                # Se eliminó int() para evitar el 'ValueError'
-                detalle_html += f"<li>{curso} ({d['AÑO']}): {d['conteo']} personas</li>"
-            detalle_html += "</ul>"
+    popup_html = f"""
+        <strong>Cantón:</strong> {canton}<br>
+        <strong>Total de beneficiarios:</strong> {cantidad_real_popup if not pd.isnull(cantidad_real_popup) else '0'}<br>
+        <strong>Detalle:</strong> {detalle_html}
+    """
 
-        popup_html = f"<strong>Cantón:</strong> {canton}<br>" \
-                     f"<strong>Total de beneficiarios:</strong> {cantidad_real_popup if not pd.isnull(cantidad_real_popup) else '0'}<br>" \
-                     f"<strong>Detalle:</strong> {detalle_html}"
+    folium.GeoJson(
+        row['geometry'],
+        style_function=lambda feature, color=color, fill_opacity=fill_opacity: {
+            'fillColor': color,
+            'color': 'black',
+            'weight': 1,
+            'fillOpacity': fill_opacity
+        },
+        tooltip=folium.Tooltip(f"{canton}"),
+        popup=folium.Popup(popup_html, max_width=300),
+        highlight_function=lambda x: {'weight': 3, 'color': 'yellow'},
+    ).add_to(m)
+    
+# 5. Agregar la leyenda (barra de color) al mapa
+m.add_child(colormap)
 
-        folium.GeoJson(
-            row['geometry'],
-            style_function=lambda feature, color=color, fill_opacity=fill_opacity: {
-                'fillColor': color,
-                'color': 'black',
-                'weight': 1,
-                'fillOpacity': fill_opacity
-            },
-            tooltip=folium.Tooltip(f"{canton}"),
-            popup=folium.Popup(popup_html, max_width=300),
-            highlight_function=lambda x: {'weight': 3, 'color': 'yellow'},
-        ).add_to(m)
-        
-    m.add_child(colormap)
-    return m
+# --- FIN DEL BLOQUE DE REEMPLAZO ---
 
-# Llamar a las funciones cacheadas en orden
-gdf_merged, df_detalle = preparar_datos_mapa_heatmap(df_filtrado, cantones_seleccionados, columna_mapa, gdf)
-mapa_generado = generar_mapa_folium(gdf_merged, df_detalle, columna_mapa, cantones_seleccionados, nombre_amigable)
+# 6. Mostrar el mapa en Streamlit
+st_folium(m, width=600, height=400, returned_objects=[])
 
-# Mostrar el mapa
-st_folium(mapa_generado, width=700, height=500, returned_objects=[])
-
+# --- INICIO DEL BLOQUE DE CÓDIGO DE OBSERVACIONES SIN DATO DE CANTÓN ---
 
 # ===============================
-# EXPANDER "SIN DATO" (Corregido)
+# Mostrar observaciones "Sin dato" (fuera del mapa)
 # ===============================
+
+# 1. Filtrar los datos 'Sin dato' del dataframe principal ya filtrado
 df_sin_dato = df_filtrado[df_filtrado['CANTON_DEF'] == "Sin dato"]
 total_sin_dato = len(df_sin_dato)
 
-if total_sin_dato > 0:
+# 2. Solo mostrar el expander si hay datos 'Sin dato'
+if total_sin_dato >= 0:
     with st.expander(f"ℹ️ **Observaciones 'Sin dato' (fuera del mapa): {total_sin_dato} personas**"):
         
+        # 3. Obtener el detalle desde el dataframe 'df_detalle' que ya calculamos para el mapa
         detalles_sin_dato = df_detalle[df_detalle['CANTON_DEF'] == "Sin dato"]
         
         if detalles_sin_dato.empty:
             st.write("No se encontró detalle para las observaciones 'Sin dato'.")
         else:
             st.markdown("<strong>Detalle por curso y año:</strong>", unsafe_allow_html=True)
+            
+            # 4. Reutilizar la misma lógica de los popups del mapa para generar la lista
             detalle_html = "<ul>"
             for _, d in detalles_sin_dato.iterrows():
+                # Usamos el diccionario 'nombre_amigable'
                 curso = nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
-                
-                # --- ¡¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE!! ---
-                # Se eliminó int() para evitar el 'ValueError' con 'Sin dato'
-                detalle_html += f"<li>{curso} ({d['AÑO']}): {d['conteo']} personas</li>"
-                
+                detalle_html += f"<li>{curso} ({int(d['AÑO'])}): {d['conteo']} personas</li>"
             detalle_html += "</ul>"
+            
             st.markdown(detalle_html, unsafe_allow_html=True)
 
+# --- FIN DEL BLOQUE DE OBSERVACIONES SIN DATO DE CANTÓN ---
+
+
+
+
 # ===============================
-# ESTADÍSTICAS DESCRIPTIVAS (Optimizadas)
+# Estadísticas descriptivas
 # ===============================
 st.subheader("📊 Estadísticas Descriptivas")
 
-@st.cache_data
-def generar_estadisticas(_df_filtrado, _nombre_amigable):
-    # --- AÑADIDA PROTECCIÓN ---
-    # Si no hay datos, devolver DataFrames y fig vacíos
-    if _df_filtrado.empty:
-        return pd.DataFrame(), pd.DataFrame(), None
-
-    # Tabla resumen por curso
-    resumen_curso = _df_filtrado.groupby(['CURSO_NORMALIZADO', 'CERTIFICADO']).size().unstack(fill_value=0)
-    if not resumen_curso.empty:
-        resumen_curso['Total'] = resumen_curso.sum(axis=1)
-        # La lógica para '1' ahora es segura gracias a la limpieza de datos
-        resumen_curso['% Certificado'] = resumen_curso.apply(
-            lambda row: (row['1'] / row['Total']) * 100 if row['Total'] > 0 and '1' in row else 0, axis=1
-        )
-        resumen_curso = resumen_curso.rename(index=_nombre_amigable)
-    
-    # Tabla resumen por cantón
-    resumen_canton = _df_filtrado.groupby(['CANTON_DEF', 'CERTIFICADO']).size().unstack(fill_value=0)
-    if not resumen_canton.empty:
-        resumen_canton['Total'] = resumen_canton.sum(axis=1)
-        resumen_canton['% Certificado'] = resumen_canton.apply(
-            lambda row: (row['1'] / row['Total']) * 100 if row['Total'] > 0 and '1' in row else 0, axis=1
-        )
-
-    # Gráfico de línea
-    fig_linea = None # Inicializar
-    df_anual = _df_filtrado.groupby(['AÑO', 'CERTIFICADO']).size().unstack(fill_value=0)
-    if not df_anual.empty:
-        df_anual['Total'] = df_anual.sum(axis=1)
-        df_anual['% Certificado'] = df_anual.apply(
-            lambda row: (row['1'] / row['Total']) * 100 if row['Total'] > 0 and '1' in row else 0, axis=1
-        )
-        # Asegurarse de que el índice es 'sortable' antes de graficar
-        df_anual = df_anual.sort_index()
-        fig_linea = px.line(df_anual, x=df_anual.index, y='% Certificado',
-                            title='Evolución de la Aprobación por Año',
-                            labels={'AÑO': 'Año', '% Certificado': '% Certificado'})
-    
-    return resumen_curso, resumen_canton, fig_linea
-
-# Llamar a la función cacheada
-resumen_curso, resumen_canton, fig_linea = generar_estadisticas(df_filtrado, nombre_amigable)
-
+# Tabla resumen por curso
 st.subheader("Resumen por Curso")
+resumen_curso = df_filtrado.groupby(['CURSO_NORMALIZADO', 'CERTIFICADO']).size().unstack(fill_value=0)
+resumen_curso['Total'] = resumen_curso.sum(axis=1)
+resumen_curso['% Certificado'] = (resumen_curso[1] / resumen_curso['Total']) * 100
+resumen_curso = resumen_curso.rename(index=nombre_amigable)
 st.dataframe(resumen_curso)
 
+# Tabla resumen por cantón
 st.subheader("Resumen por Cantón")
-st.dataframe(ressemn_canton) # <-- Typo corregido
+resumen_canton = df_filtrado.groupby(['CANTON_DEF', 'CERTIFICADO']).size().unstack(fill_value=0)
+resumen_canton['Total'] = resumen_canton.sum(axis=1)
+resumen_canton['% Certificado'] = (resumen_canton[1] / resumen_canton['Total']) * 100
+st.dataframe(resumen_canton)
 
+# Gráfico de línea
 st.subheader("Gráfico de Línea por Año")
-if fig_linea:
-    st.plotly_chart(fig_linea)
-else:
-    st.write("No hay datos disponibles para mostrar el gráfico de línea.")
+df_anual = df_filtrado.groupby(['AÑO', 'CERTIFICADO']).size().unstack(fill_value=0)
+df_anual['Total'] = df_anual.sum(axis=1)
+df_anual['% Certificado'] = (df_anual[1] / df_anual['Total']) * 100
+fig_linea = px.line(df_anual, x=df_anual.index, y='% Certificado', 
+                    title='Evolución de la Participación y Aprobación por Año',
+                    labels={'AÑO': 'Año', '% Certificado': '% Certificado'})
+st.plotly_chart(fig_linea)
 
 # ===============================
-# DESCARGAR DATOS (Corregido)
+# Descargar datos filtrados en formato XLSX
 # ===============================
+st.subheader("📥 Descargar Datos Filtrados")
+
 @st.cache_data
-def convertir_a_excel(_df):
+def convertir_a_excel(df):
+    import io
+    from pandas import ExcelWriter
+
     output = io.BytesIO()
     with ExcelWriter(output, engine='xlsxwriter') as writer:
-        _df.to_excel(writer, index=False, sheet_name='Datos')
-    return output.getvalue()
+        df.to_excel(writer, index=False, sheet_name='DatosFiltrados')
+    processed_data = output.getvalue()
+    return processed_data
 
-# --- Descarga 1: Datos Filtrados ---
-st.subheader("📥 Descargar Datos Filtrados")
-# --- AÑADIDA PROTECCIÓN ---
-if not df_filtrado.empty:
-    archivo_excel_filtrado = convertir_a_excel(df_filtrado)
-    st.download_button(
-        label="📥 Descargar datos filtrados en Excel",
-        data=archivo_excel_filtrado,
-        file_name='datos_filtrados.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-else:
-    st.info("No hay datos para descargar según los filtros seleccionados.")
+archivo_excel = convertir_a_excel(df_filtrado)
 
-# --- Descarga 2: Datos Colapsados ---
+st.download_button(
+    label="📥 Descargar datos filtrados en Excel",
+    data=archivo_excel,
+    file_name='datos_filtrados.xlsx',
+    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+)
+
+# ===============================
+# Descargar datos colapsados (por Cantón - Curso - Año)
+# ===============================
 st.subheader("📥 Descargar Datos Colapsados (por Cantón - Curso - Año)")
-activar_colapsado = st.checkbox("Generar datos colapsados para descargar")
+
+# Permitir que el usuario active la opción
+activar_colapsado = st.checkbox("Quiero descargar los datos colapsados por Cantón - Curso - Año")
 
 if activar_colapsado:
-    # --- AÑADIDA PROTECCIÓN ---
-    if df_filtrado.empty:
-        st.info("No hay datos para colapsar según los filtros seleccionados.")
-    else:
-        st.info("Generando archivo colapsado... esto puede tardar un momento.")
-        
-        df_para_pivot = df_filtrado.copy()
-        
-        df_para_pivot['CURSO_AÑO'] = df_para_pivot['CURSO_NORMALIZADO'].map(nombre_amigable).fillna(df_para_pivot['CURSO_NORMALIZADO'].str.title()) + " " + df_para_pivot['AÑO'].astype(str)
-        
-        df_pivot = df_para_pivot.pivot_table(
-            index='CANTON_DEF',
-            columns='CURSO_AÑO',
-            values='CERTIFICADO',
-            aggfunc='count',
-            fill_value=0
-        ).reset_index()
+    # Crear columna combinada Curso + Año
+    df_filtrado['CURSO_AÑO'] = df_filtrado['CURSO_NORMALIZADO'].map(nombre_amigable).fillna(df_filtrado['CURSO_NORMALIZADO'].str.title()) + " " + df_filtrado['AÑO'].astype(str)
+    
+    # Pivotear los datos
+    df_pivot = df_filtrado.pivot_table(
+        index='CANTON_DEF',
+        columns='CURSO_AÑO',
+        values='CERTIFICADO',  # o cualquier columna (usamos .size() para contar)
+        aggfunc='count',
+        fill_value=0
+    ).reset_index()
 
-        df_pivot['TOTAL'] = df_pivot.drop(columns='CANTON_DEF').sum(axis=1)
-        columnas_ordenadas = ['CANTON_DEF'] + sorted([c for c in df_pivot.columns if c not in ['CANTON_DEF', 'TOTAL']]) + ['TOTAL']
-        df_pivot = df_pivot[columnas_ordenadas]
+    # Calcular la columna TOTAL
+    df_pivot['TOTAL'] = df_pivot.drop(columns='CANTON_DEF').sum(axis=1)
 
-        archivo_excel_colapsado = convertir_a_excel(df_pivot)
+    # Reordenar columnas: CANTON_DEF primero, luego cursos + años ordenados alfabéticamente, luego TOTAL
+    columnas_ordenadas = ['CANTON_DEF'] + sorted([c for c in df_pivot.columns if c not in ['CANTON_DEF', 'TOTAL']]) + ['TOTAL']
+    df_pivot = df_pivot[columnas_ordenadas]
 
-        st.download_button(
-            label="📥 Descargar datos colapsados en Excel",
-            data=archivo_excel_colapsado,
-            file_name='datos_colapsados.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+    # Preparar para descargar
+    archivo_excel_colapsado = convertir_a_excel(df_pivot)
+
+    st.download_button(
+        label="📥 Descargar datos colapsados en Excel",
+        data=archivo_excel_colapsado,
+        file_name='datos_colapsados.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
