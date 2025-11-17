@@ -161,6 +161,8 @@ gdf_merged, df_detalle = preparar_datos_mapa_heatmap(df_filtrado, gdf)
 m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
 # --- INICIA EL REEMPLAZO (SOLUCIÓN B) ---
 
+# --- INICIA EL REEMPLAZO (SOLUCIÓN B) ---
+
 # 3. Definir la escala de color (Heatmap por Escalones Logarítmicos)
 max_beneficiarios = gdf_merged['cantidad_color'].max()
 
@@ -180,7 +182,43 @@ try:
     pasos = np.logspace(
         start=0, # 10^0 = 1
         stop=np.log10(max_beneficiarios), # 10^log10(max) = max
-        num=6 # 6 puntos (ej. 1, 10, 100
+        num=6 # 6 puntos (ej. 1, 10, 100, 1000...)
+    )
+    
+    # Redondeamos a enteros para la leyenda
+    pasos = [int(round(p)) for p in pasos]
+    
+    # Aseguramos que los pasos sean únicos (evita [1, 1, 2, 4...])
+    pasos = sorted(list(set(pasos))) 
+    
+    # Si hay menos pasos que colores (ej. max es muy bajo), reducimos los colores
+    num_colores_necesarios = len(pasos) - 1
+    if num_colores_necesarios < 1:
+        # Fallback por si max_beneficiarios es 1
+        pasos = [1, 2]
+        colores_escala = [colores_escala[0]]
+    else:
+        colores_escala = colores_escala[:num_colores_necesarios]
+
+except Exception as e:
+    # Fallback si numpy falla (ej. max_beneficiarios es 0)
+    pasos = [1, 10]
+    colores_escala = [colores_escala[0]]
+
+# Creamos el StepColormap
+colormap = cm.StepColormap(
+    colors=colores_escala,
+    index=pasos, # Los "escalones" donde cambia el color
+    vmin=1, 
+    vmax=max_beneficiarios,
+    caption='Cantidad de Beneficiarios (Escala por pasos)'
+)
+
+# La lógica del bucle "for _, row..." (paso 4) 
+# y la lógica de color dentro de él NO CAMBIAN.
+# StepColormap y LogColormap se llaman igual: colormap(valor)
+# Y tu lógica de "color_cero" y "color_no_seleccionado" ya maneja los casos < 1.
+
 
 # 4. Iterar y aplicar el color del colormap y el popup
 for _, row in gdf_merged.iterrows():
