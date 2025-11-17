@@ -367,6 +367,31 @@ gdf_merged['cantidad_beneficiarios'] = gdf_merged['cantidad_beneficiarios'].appl
 gdf_merged['cantidad_color'] = gdf_merged['cantidad_color'].apply(int)
 # --- FIN DE LA CORRECCIÓN ---
 
+# --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
+# El error 'not JSON serializable' ocurre porque folium.GeoJson
+# intenta serializar TODAS las columnas de gdf_merged, incluidas
+# las columnas numéricas (int64, float64) del geojson original.
+
+# Solución: Crear un GeoDataFrame "limpio" solo con las columnas
+# que SÍ necesitamos, asegurándonos de que tengan tipos nativos.
+
+columnas_para_mapa = [
+    'geometry',      # Columna obligatoria de geopandas
+    columna_mapa,    # La usamos en el tooltip y estilo ('CANTÓN')
+    'cantidad_color' # La usamos en el tooltip y estilo (ya es 'int' nativo)
+]
+
+# Asegurarse de que no haya columnas duplicadas si columna_mapa == 'CANTON_DEF'
+# y chequear que existan
+columnas_finales = []
+for col in columnas_para_mapa:
+    if col in gdf_merged.columns and col not in columnas_finales:
+        columnas_finales.append(col)
+
+# Filtramos el GeoDataFrame. Folium AHORA solo recibirá estas columnas.
+gdf_para_mapa = gdf_merged[columnas_finales]
+# --- FIN DE LA CORRECCIÓN DEFINITIVA ---
+
 # ===========================
 # Mapa (usando un solo GeoJson con style_function)
 # ===========================
@@ -444,7 +469,7 @@ tooltip = folium.GeoJsonTooltip(fields=[columna_mapa, 'cantidad_color'],
                                 localize=True)
 
 folium.GeoJson(
-    data=gdf_merged.__geo_interface__,
+    data=gdf_para_mapa.__geo_interface__, # <-- USAR EL DATAFRAME LIMPIO
     style_function=lambda feature: estilo_feature(feature),
     tooltip=tooltip,
     name='Cantones'
