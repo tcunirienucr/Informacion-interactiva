@@ -112,6 +112,9 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def cargar_datos():
     # Lee la hoja (ajustá worksheet si hace falta)
     df = conn.read(worksheet="mapa_más_reciente")
+# Convertir cualquier Timestamp a string
+    df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, pd.Timestamp) else x)
+
 
     # Normalizaciones y tipos
     df['CURSO'] = df.get('CURSO', '').fillna('').astype(str)
