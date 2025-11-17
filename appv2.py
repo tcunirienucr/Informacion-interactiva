@@ -151,31 +151,61 @@ gdf_merged, df_detalle = preparar_datos_mapa(df_filtrado, gdf)
 
 m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
 
-def color_por_cantidad(canton, cantidad, cantones_seleccionados):
-    if canton not in cantones_seleccionados:
-        return 'gray'
-    elif pd.isnull(cantidad) or cantidad ==0:
-        return 'red'
-    elif cantidad >= 1 and cantidad < 10:
-        return 'orange'
-    elif cantidad >= 10 and cantidad < 20:
-        return 'yellow'
-    elif cantidad >= 20 and cantidad < 50:
-        return "blue"
-    elif cantidad >= 50 and cantidad < 100:
-        return 'violet'
-    elif cantidad >= 100:
-        return 'cyan'
+# ===============================
+# Mapa interactivo con folium (Versión Heatmap)
+# ===============================
 
+# 1. Preparar los datos y el mapa base
+m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
 
+# 2. Modificar la función de preparación para que llene los NaN con 0 para el color
+@st.cache_data
+def preparar_datos_mapa_heatmap(df_filtrado, _gdf):
+    df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
+    df_detalle = df_filtrado.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
+    
+    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on=columna_mapa, right_on="CANTON_DEF")
+    
+    # Creamos una columna 'cantidad_color' que es 0 para NaN
+    # Usaremos esta para el color, pero 'cantidad_beneficiarios' (que tiene NaN) para el popup
+    gdf_merged['cantidad_color'] = gdf_merged['cantidad_beneficiarios'].fillna(0)
+    return gdf_merged, df_detalle
+
+gdf_merged, df_detalle = preparar_datos_mapa_heatmap(df_filtrado, gdf)
+
+# 3. Definir la escala de color (Heatmap Azul)
+# Usar el máximo de los datos filtrados, o un valor por defecto (ej. 10)
+max_beneficiarios = gdf_merged['cantidad_color'].max()
+if max_beneficiarios == 0:
+    max_beneficiarios = 10 # Evitar división por cero si todo es 0
+    
+# Crear un colormap lineal de 'Blues'
+# Va de 0 (blanco/azul claro) al máximo (azul oscuro)
+colormap = cm.LinearColormap(
+    colors=['#ece7f2', '#034e7b'], # De un azul-grisáceo muy claro a azul oscuro
+    vmin=0, 
+    vmax=max_beneficiarios,
+    caption='Cantidad de Beneficiarios (según filtros)'
+)
+
+# 4. Iterar y aplicar el color del colormap y el popup
 for _, row in gdf_merged.iterrows():
     canton = row[columna_mapa]
-    cantidad = row['cantidad_beneficiarios']
-    color = color_por_cantidad(canton, cantidad, cantones_seleccionados)
+    cantidad_real_popup = row['cantidad_beneficiarios'] # Puede ser NaN
+    cantidad_para_color = row['cantidad_color'] # Es 0 si es NaN
+    
+    # Lógica de color
+    if canton not in cantones_seleccionados:
+        color = '#D3D3D3' # Un gris claro para cantones NO seleccionados
+        fill_opacity = 0.3
+    else:
+        color = colormap(cantidad_para_color) # Aplicar el heatmap
+        fill_opacity = 0.7 # Más opaco para los seleccionados
 
+    # Lógica de Popup (la mantenemos exactamente igual)
     detalles = df_detalle[df_detalle['CANTON_DEF'] == canton]
     if detalles.empty:
-        detalle_html = "<i>Sin datos disponibles</i>"
+        detalle_html = "<i>Sin datos disponibles (según filtros)</i>"
     else:
         detalle_html = "<ul>"
         for _, d in detalles.iterrows():
@@ -185,33 +215,30 @@ for _, row in gdf_merged.iterrows():
 
     popup_html = f"""
         <strong>Cantón:</strong> {canton}<br>
-        <strong>Total de beneficiarios:</strong> {cantidad if not pd.isnull(cantidad) else '0'}<br>
+        <strong>Total de beneficiarios:</strong> {cantidad_real_popup if not pd.isnull(cantidad_real_popup) else '0'}<br>
         <strong>Detalle:</strong> {detalle_html}
     """
 
     folium.GeoJson(
         row['geometry'],
-        style_function=lambda feature, color=color: {
+        style_function=lambda feature, color=color, fill_opacity=fill_opacity: {
             'fillColor': color,
             'color': 'black',
             'weight': 1,
-            'fillOpacity': 0.5
+            'fillOpacity': fill_opacity
         },
         tooltip=folium.Tooltip(f"{canton}"),
-        popup=folium.Popup(popup_html, max_width=300)
+        popup=folium.Popup(popup_html, max_width=300),
+        highlight_function=lambda x: {'weight': 3, 'color': 'yellow'},
     ).add_to(m)
+    
+# 5. Agregar la leyenda (barra de color) al mapa
+m.add_child(colormap)
 
+# 6. Mostrar el mapa en Streamlit
 st_folium(m, width=800, height=600)
 
-st.markdown("""
-**🟥 0 beneficiarios o sin dato**  
-**🟧 Menos de 10 beneficiarios**  
-**🟨 Entre 10 y 20 beneficiarios**  
-**🟦 Entre 20 y 50 beneficiarios**  
-**🟪 Entre 50 y 100 beneficiarios**  
-**🩵 Más de 100 beneficiarios**  
-**⚪ Cantón no seleccionado**
-""")
+
 
 
 
