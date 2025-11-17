@@ -8,6 +8,106 @@ from streamlit_folium import st_folium
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
+#FUNCIONES DE EDAD Y SEXO
+
+
+def clasificar_edad(valor):
+    """
+    Clasifica el valor de la edad en las categorías deseadas,
+    basado en la lógica que proporcionaste.
+    """
+    try:
+        # 1. Manejar valores nulos
+        if pd.isna(valor):
+            return 'Sin dato'
+
+        # 2. Manejar valores numéricos (enteros o flotantes)
+        if isinstance(valor, (int, float)):
+            if 13 <= valor <= 18:
+                return "13 a 18"
+            elif 19 <= valor <= 35:
+                return "19 a 35"
+            elif 36 <= valor <= 64:
+                return "36 a 64"
+            elif valor >= 65 and valor <98:
+                return "Mayor a 65"
+            elif valor == 98:
+                return "19 a 35"
+            elif valor == 102: 
+                return "19 a 35"
+            elif valor == 99:
+                return "36 a 64"
+            elif  valor == 103: 
+                return "30 a 39"
+            elif valor == 105: 
+                return "36 a 64"
+            elif valor == 109:
+                return "19 a 35"
+            elif valor == 106:
+                return "36 a 64"
+            else:
+                # Números fuera de rango (ej. 0-12) se consideran 'Sin dato'
+                return 'Sin dato'
+
+        # 3. Manejar valores de texto
+        v = str(valor).strip()
+        if v == '' or v == 'Información incompleta':
+            return 'Sin dato'
+
+        if v in ['15-19', '15 a 18', "15-18"]:
+            return '13 a 18'
+        elif v in ["19-35", "20-29", "20 a 29", "18 a 35 años", "20 o más", "Más de 20"]:
+            return '19 a 35'
+        elif v in ["30-39", "30 a 39"]:
+            return "30 a 39"
+        elif v in ["36-64", "40-49", "40 a 49", "50-59", "Más de 50", "36 a 64 años", "Más de 30"]:
+            return '36 a 64'
+        elif v in ["Más de 60", "Más de 65"]:
+            return 'Mayor a 65'
+        elif v in ["Sin dato"]:
+            return "Sin dato"
+
+    except:
+        # Cualquier error en la conversión se marca como 'Sin dato'
+        return 'Sin dato'
+
+    # 4. Cualquier valor no clasificado se considera 'Sin dato'
+    return 'Sin dato'
+
+def normalizar_sexo(valor):
+    """
+    Clasifica el valor de SEXO en las 4 categorías de la imagen:
+    Femenino, Masculino, NR (No Responde), Sin dato (Nulo/Vacío).
+    """
+    # 1. Manejar nulos
+    if pd.isna(valor):
+        return "Sin dato"
+
+    v = str(valor).strip()
+
+    # 2. Manejar vacíos
+    if v == "":
+        return "Sin dato"
+
+    # 3. Categorías principales
+    if v == 'Femenino':
+        return 'Femenino'
+    if v == 'Masculino':
+        return 'Masculino'
+
+    # 4. Agrupar "No Responde" (basado en tu lógica)
+    if v in ['No indica', 'No responde', 'No contesta', 'NR']:
+        return 'NR'
+
+    # 5. Manejar "Sin dato" explícito
+    if v == 'Sin dato':
+        return 'Sin dato'
+
+    # 6. Cualquier otro valor (ej. "Otro") se considera 'Sin dato'
+    return 'Sin dato'
+
+#FIN DE FUNCIONES DE EDAD Y SEXO
+
 ruta_mapa="limitecantonal_5k_fixed.geojson"
 columna_mapa="CANTÓN"
 
@@ -37,13 +137,37 @@ st.title("📊 Mapa y Estadísticas de las personas beneficiarias: TCU Nirien - 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
+# --- REEMPLAZA ESTE BLOQUE ---
+
+@st.cache_data(ttl=300)
 def cargar_datos():
     df = conn.read(worksheet="mapa_más_reciente")
+    
+    # Normalización de Cursos
     df["CURSO_NORMALIZADO"] = df["CURSO"].str.lower().str.normalize('NFKD') \
         .str.encode('ascii', errors='ignore').str.decode('utf-8')
+    
+    # === INICIO DE NUEVO CÓDIGO ===
+    # Asumimos que las columnas se llaman 'EDAD' y 'SEXO' en tu Google Sheet
+    # Si se llaman diferente, ajusta 'EDAD' y 'SEXO' aquí.
+    if 'EDAD' in df.columns:
+        df['EDAD_CLASIFICADA'] = df['EDAD'].apply(clasificar_edad)
+    else:
+        st.warning("No se encontró la columna 'EDAD' en los datos.")
+        df['EDAD_CLASIFICADA'] = 'Sin dato' # Crear columna dummy
+        
+    if 'SEXO' in df.columns:
+        df['SEXO_NORMALIZADO'] = df['SEXO'].apply(normalizar_sexo)
+    else:
+        st.warning("No se encontró la columna 'SEXO' en los datos.")
+        df['SEXO_NORMALIZADO'] = 'Sin dato' # Crear columna dummy
+    # === FIN DE NUEVO CÓDIGO ===
+        
     return df
 
 df = cargar_datos()
+
+# --- FIN DEL REEMPLAZO ---
 
 # ===============================
 # Cargar geojson con caché
@@ -122,7 +246,52 @@ with st.sidebar:
         help="1: Sí obtuvo certificado y concluyó el curso.\n0: No concluyó el curso, o lo concluyó sin certificarse."
     )
 
+# ... (código del filtro de Certificados)
+    # ... help="1: Sí obtuvo certificado..."
+    # )
 
+    # === INICIO DE NUEVO CÓDIGO ===
+
+    st.divider() # Separador visual
+
+    # ===== Edades =====
+    edades_disponibles = sorted(df['EDAD_CLASIFICADA'].dropna().unique())
+    opciones_edades = ["Todos"] + list(edades_disponibles)
+
+    seleccion_edades = st.multiselect("Grupo de Edad", opciones_edades, default=["Todos"])
+    
+    if "Todos" in seleccion_edades:
+        edades_seleccionadas = edades_disponibles
+    else:
+        edades_seleccionadas = seleccion_edades
+        if "Todos" in seleccion_edades:
+             seleccion_edades.remove("Todos")
+        edades_seleccionadas = seleccion_edades
+
+    # ===== Sexo =====
+    sexos_disponibles = sorted(df['SEXO_NORMALIZADO'].dropna().unique())
+    opciones_sexos = ["Todos"] + list(sexos_disponibles)
+    
+    seleccion_sexos = st.multiselect("Sexo", opciones_sexos, default=["Todos"])
+    
+    if "Todos" in seleccion_sexos:
+        sexos_seleccionados = sexos_disponibles
+    else:
+        sexos_seleccionados = seleccion_sexos
+        if "Todos" in seleccion_sexos:
+            seleccion_sexos.remove("Todos")
+        sexos_seleccionados = seleccion_sexos
+        
+    # === FIN DE NUEVO CÓDIGO ===
+
+# (Fin del bloque "with st.sidebar:")
+
+
+
+# ===============================
+# Filtrar datos una sola vez
+# ===============================
+# --- REEMPLAZA ESTE BLOQUE ---
 
 # ===============================
 # Filtrar datos una sola vez
@@ -130,8 +299,13 @@ with st.sidebar:
 df_filtrado = df[
     df["CURSO_NORMALIZADO"].isin(cursos_filtrados) &
     df["AÑO"].isin(anios_seleccionados) &
-    df["CERTIFICADO"].isin(certificados_seleccionados)
+    df["CERTIFICADO"].isin(certificados_seleccionados) &
+    df["CANTON_DEF"].isin(cantones_seleccionados) &  # <-- CORRECCIÓN IMPORTANTE
+    df["EDAD_CLASIFICADA"].isin(edades_seleccionadas) & # <-- NUEVO
+    df["SEXO_NORMALIZADO"].isin(sexos_seleccionados)   # <-- NUEVO
 ]
+
+# --- FIN DEL REEMPLAZO ---
 
 
 # ===============================
