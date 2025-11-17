@@ -132,59 +132,53 @@ df_filtrado = df[
     df["CERTIFICADO"].isin(certificados_seleccionados)
 ]
 
+
 # ===============================
-# Mapa interactivo con folium
+# Mapa interactivo con folium (Versión Heatmap Logarítmico)
 # ===============================
 st.subheader("🗺️ Mapa Interactivo")
 
-@st.cache_data
-def preparar_datos_mapa(df_filtrado, _gdf):
-    df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
-    df_detalle = df_filtrado.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
-    gdf_merged = _gdf.merge(df_cantonal, how="left", left_on=columna_mapa, right_on="CANTON_DEF")
-    return gdf_merged, df_detalle
-
-# 👇 CAMBIAR AQUÍ TAMBIÉN
-gdf_merged, df_detalle = preparar_datos_mapa(df_filtrado, gdf)
-
-
-m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
-
-# ===============================
-# Mapa interactivo con folium (Versión Heatmap)
-# ===============================
-
-# 1. Preparar los datos y el mapa base
-m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
-
-# 2. Modificar la función de preparación para que llene los NaN con 0 para el color
+# 1. Preparar los datos (Función de caché)
 @st.cache_data
 def preparar_datos_mapa_heatmap(df_filtrado, _gdf):
-    df_cantonal = df_filtrado.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
-    df_detalle = df_filtrado.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
+    # Asegurarse de filtrar por los cantones seleccionados ANTES de agrupar
+    df_filtrado_mapa = df_filtrado[df_filtrado['CANTON_DEF'].isin(cantones_seleccionados)]
     
+    df_cantonal = df_filtrado_mapa.groupby('CANTON_DEF').size().reset_index(name='cantidad_beneficiarios')
+    df_detalle = df_filtrado_mapa.groupby(['CANTON_DEF', 'CURSO_NORMALIZADO', 'AÑO']).size().reset_index(name='conteo')
+    
+    # Hacer el merge solo con los cantones del GeoJSON
     gdf_merged = _gdf.merge(df_cantonal, how="left", left_on=columna_mapa, right_on="CANTON_DEF")
     
-    # Creamos una columna 'cantidad_color' que es 0 para NaN
-    # Usaremos esta para el color, pero 'cantidad_beneficiarios' (que tiene NaN) para el popup
+    # Creamos 'cantidad_color' que es 0 para NaN
     gdf_merged['cantidad_color'] = gdf_merged['cantidad_beneficiarios'].fillna(0)
     return gdf_merged, df_detalle
 
 gdf_merged, df_detalle = preparar_datos_mapa_heatmap(df_filtrado, gdf)
 
-# 3. Definir la escala de color (Heatmap Azul)
-# Usar el máximo de los datos filtrados, o un valor por defecto (ej. 10)
+# 2. Preparar el mapa base
+m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
+
+# 3. Definir la escala de color (Heatmap Logarítmico)
 max_beneficiarios = gdf_merged['cantidad_color'].max()
-if max_beneficiarios == 0:
-    max_beneficiarios = 10 # Evitar división por cero si todo es 0
+
+# vmin=1 es crucial para la escala logarítmica (log(0) es indefinido)
+min_log = 1 
+
+# Aseguramos que vmax sea siempre mayor que vmin
+if max_beneficiarios <= min_log:
+    max_beneficiarios = min_log + 1 # Asegurar un rango válido
     
-# Crear un colormap lineal de 'Blues'
-# Va de 0 (blanco/azul claro) al máximo (azul oscuro)
-colormap = cm.LinearColormap(
-    colors=['#ece7f2', '#034e7b'], # De un azul-grisáceo muy claro a azul oscuro
-    vmin=0, 
+# Definimos un color específico para el valor 0
+color_cero = '#ece7f2' # El color más bajo de tu escala original
+color_no_seleccionado = '#D3D3D3' # Gris
+
+# La escala logarítmica ahora se aplica de 1 a max
+colormap = cm.LogColormap(
+    colors=['#a6bddb', '#034e7b'], # De azul medio a azul oscuro
+    vmin=min_log, 
     vmax=max_beneficiarios,
-    caption='Cantidad de Beneficiarios (según filtros)'
+    caption='Cantidad de Beneficiarios (Escala Logarítmica)'
 )
 
 # 4. Iterar y aplicar el color del colormap y el popup
@@ -193,18 +187,25 @@ for _, row in gdf_merged.iterrows():
     cantidad_real_popup = row['cantidad_beneficiarios'] # Puede ser NaN
     cantidad_para_color = row['cantidad_color'] # Es 0 si es NaN
     
-    # Lógica de color
+    # Lógica de color MEJORADA
     if canton not in cantones_seleccionados:
-        color = '#D3D3D3' # Un gris claro para cantones NO seleccionados
+        color = color_no_seleccionado
         fill_opacity = 0.3
+    elif cantidad_para_color == 0:
+        color = color_cero # Color específico para 0
+        fill_opacity = 0.7
     else:
-        color = colormap(cantidad_para_color) # Aplicar el heatmap
-        fill_opacity = 0.7 # Más opaco para los seleccionados
+        color = colormap(cantidad_para_color) # Aplicar el heatmap logarítmico
+        fill_opacity = 0.7 
 
     # Lógica de Popup (la mantenemos exactamente igual)
     detalles = df_detalle[df_detalle['CANTON_DEF'] == canton]
     if detalles.empty:
-        detalle_html = "<i>Sin datos disponibles (según filtros)</i>"
+        # Mostrar esto solo si el cantón SÍ fue seleccionado pero no tiene datos
+        if canton in cantones_seleccionados:
+            detalle_html = "<i>0 beneficiarios (según filtros)</i>"
+        else:
+            detalle_html = "<i>Cantón no seleccionado</i>"
     else:
         detalle_html = "<ul>"
         for _, d in detalles.iterrows():
@@ -234,8 +235,10 @@ for _, row in gdf_merged.iterrows():
 # 5. Agregar la leyenda (barra de color) al mapa
 m.add_child(colormap)
 
+# --- FIN DEL BLOQUE DE REEMPLAZO ---
+
 # 6. Mostrar el mapa en Streamlit
-st_folium(m, width=600, height=400)
+st_folium(m, width=600, height=400, returned_objects=[])
 
 # --- INICIO DEL BLOQUE DE CÓDIGO DE OBSERVACIONES SIN DATO DE CANTÓN ---
 
