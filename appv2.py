@@ -98,8 +98,12 @@ st.title("📊 Mapa y Estadísticas de las personas beneficiarias: TCU Nirien - 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=300)
+# --- INICIA REEMPLAZO DE cargar_datos ---
+
+@st.cache_data(ttl=300)
 def cargar_datos():
     df = conn.read(worksheet="mapa_más_reciente")
+    
     df["CURSO_NORMALIZADO"] = df["CURSO"].str.lower().str.normalize('NFKD') \
         .str.encode('ascii', errors='ignore').str.decode('utf-8')
     
@@ -115,13 +119,31 @@ def cargar_datos():
         st.warning("No se encontró la columna 'SEXO' en los datos.")
         df['SEXO_NORMALIZADO'] = 'Sin dato'
     
-    # Asegurarse que AÑO y CERTIFICADO sean tipos consistentes
+    # --- INICIA LA CORRECCIÓN DE AÑO ---
     if 'AÑO' in df.columns:
+        # 1. Convertir a numérico. '2022.0' -> 2022.0, 'Sin dato' -> NaN
+        df['AÑO'] = pd.to_numeric(df['AÑO'], errors='coerce')
+        
+        # 2. Convertir a tipo Int64 (entero que soporta NaNs)
+        # 2022.0 -> 2022, NaN -> <NA>
+        df['AÑO'] = df['AÑO'].astype('Int64')
+        
+        # 3. Convertir a string. 2022 -> '2022', <NA> -> '<NA>'
         df['AÑO'] = df['AÑO'].astype(str)
+        
+        # 4. Reemplazar los strings nulos por 'Sin dato'
+        df['AÑO'] = df['AÑO'].replace(['<NA>', 'nan'], 'Sin dato')
+    else:
+        st.warning("No se encontró la columna 'AÑO' en los datos.")
+        df['AÑO'] = 'Sin dato'
+    # --- FIN DE LA CORRECCIÓN DE AÑO ---
+
     if 'CERTIFICADO' in df.columns:
         df['CERTIFICADO'] = df['CERTIFICADO'].astype(str)
 
     return df
+
+# --- FIN DE REEMPLAZO ---
 
 @st.cache_data
 def cargar_geojson():
@@ -353,7 +375,7 @@ def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_selec
 
         detalles = _df_detalle[_df_detalle['CANTON_DEF'] == canton]
         if detalles.empty:
-            detalle_html = "<i>0 beneficiarios (según filtros)</i>" if canton in _cantones_seleccionados else "<i>Cantón no seleccionado</i>"
+            detalle_html += f"<li>{curso} ({d['AÑO']}): {d['conteo']} personas</li>"
         else:
             detalle_html = "<ul>"
             for _, d in detalles.iterrows():
