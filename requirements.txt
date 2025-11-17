@@ -10,6 +10,7 @@ streamlit
 pandas
 gspread
 google-auth
+branca.colormap
 openpyxl
 st-gsheets-connection
 oauth2client
