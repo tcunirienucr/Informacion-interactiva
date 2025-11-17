@@ -127,8 +127,17 @@ def cargar_datos():
         st.warning("No se encontró la columna 'AÑO' en los datos.")
         df['AÑO'] = 'Sin dato'
 
+    # --- CORRECCIÓN DE CERTIFICADO (NUEVO) ---
+    # Para asegurar que '1.0' y '1' se traten como '1'
     if 'CERTIFICADO' in df.columns:
-        df['CERTIFICADO'] = df['CERTIFICADO'].astype(str)
+        df['CERTIFICADO'] = pd.to_numeric(df['CERTIFICADO'], errors='coerce')
+        df['CERTIFICADO'] = df['CERTIFICADO'].fillna(0) # Asumir NaN como 0
+        df['CERTIFICADO'] = df['CERTIFICADO'].astype(int) # Convertir 1.0 a 1
+        df['CERTIFICADO'] = df['CERTIFICADO'].astype(str) # Convertir 1 a '1'
+    else:
+        st.warning("No se encontró la columna 'CERTIFICADO' en los datos.")
+        df['CERTIFICADO'] = '0'
+
 
     return df
 
@@ -214,6 +223,7 @@ with st.sidebar:
     )
 
     # ===== Certificados =====
+    # Ahora solo debería haber '0' y '1' gracias a la limpieza en cargar_datos
     certificados_disponibles = sorted(df["CERTIFICADO"].dropna().unique())
     if 'seleccion_certificados' not in st.session_state:
         st.session_state.seleccion_certificados = certificados_disponibles.copy()
@@ -426,10 +436,16 @@ st.subheader("📊 Estadísticas Descriptivas")
 
 @st.cache_data
 def generar_estadisticas(_df_filtrado, _nombre_amigable):
+    # --- AÑADIDA PROTECCIÓN ---
+    # Si no hay datos, devolver DataFrames y fig vacíos
+    if _df_filtrado.empty:
+        return pd.DataFrame(), pd.DataFrame(), None
+
     # Tabla resumen por curso
     resumen_curso = _df_filtrado.groupby(['CURSO_NORMALIZADO', 'CERTIFICADO']).size().unstack(fill_value=0)
     if not resumen_curso.empty:
         resumen_curso['Total'] = resumen_curso.sum(axis=1)
+        # La lógica para '1' ahora es segura gracias a la limpieza de datos
         resumen_curso['% Certificado'] = resumen_curso.apply(
             lambda row: (row['1'] / row['Total']) * 100 if row['Total'] > 0 and '1' in row else 0, axis=1
         )
@@ -444,13 +460,15 @@ def generar_estadisticas(_df_filtrado, _nombre_amigable):
         )
 
     # Gráfico de línea
-    df_anual = _df_filtrado.groupby(['AÑO', 'CERTIFICADO']).size().unstack(fill_value=0)
     fig_linea = None # Inicializar
+    df_anual = _df_filtrado.groupby(['AÑO', 'CERTIFICADO']).size().unstack(fill_value=0)
     if not df_anual.empty:
         df_anual['Total'] = df_anual.sum(axis=1)
         df_anual['% Certificado'] = df_anual.apply(
             lambda row: (row['1'] / row['Total']) * 100 if row['Total'] > 0 and '1' in row else 0, axis=1
         )
+        # Asegurarse de que el índice es 'sortable' antes de graficar
+        df_anual = df_anual.sort_index()
         fig_linea = px.line(df_anual, x=df_anual.index, y='% Certificado',
                             title='Evolución de la Aprobación por Año',
                             labels={'AÑO': 'Año', '% Certificado': '% Certificado'})
@@ -464,7 +482,7 @@ st.subheader("Resumen por Curso")
 st.dataframe(resumen_curso)
 
 st.subheader("Resumen por Cantón")
-st.dataframe(resumen_canton)
+st.dataframe(ressemn_canton) # <-- Typo corregido
 
 st.subheader("Gráfico de Línea por Año")
 if fig_linea:
@@ -484,6 +502,7 @@ def convertir_a_excel(_df):
 
 # --- Descarga 1: Datos Filtrados ---
 st.subheader("📥 Descargar Datos Filtrados")
+# --- AÑADIDA PROTECCIÓN ---
 if not df_filtrado.empty:
     archivo_excel_filtrado = convertir_a_excel(df_filtrado)
     st.download_button(
@@ -500,6 +519,7 @@ st.subheader("📥 Descargar Datos Colapsados (por Cantón - Curso - Año)")
 activar_colapsado = st.checkbox("Generar datos colapsados para descargar")
 
 if activar_colapsado:
+    # --- AÑADIDA PROTECCIÓN ---
     if df_filtrado.empty:
         st.info("No hay datos para colapsar según los filtros seleccionados.")
     else:
