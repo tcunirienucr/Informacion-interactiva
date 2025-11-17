@@ -358,6 +358,15 @@ gdf_merged = gdf.merge(df_cantonal, how="left", left_on=columna_mapa, right_on="
 gdf_merged['cantidad_beneficiarios'] = gdf_merged['cantidad_beneficiarios'].fillna(0).astype(int)
 gdf_merged['cantidad_color'] = gdf_merged['cantidad_beneficiarios']  # nombre claro para style_function
 
+# --- INICIO DE LA CORRECCIÓN PARA JSON ---
+# El error 'not JSON serializable' es casi siempre por un tipo de dato de numpy
+# (como int64) que Folium no puede manejar.
+# Forzamos la conversión a tipos nativos de Python (int) que SÍ son serializables.
+
+gdf_merged['cantidad_beneficiarios'] = gdf_merged['cantidad_beneficiarios'].apply(int)
+gdf_merged['cantidad_color'] = gdf_merged['cantidad_color'].apply(int)
+# --- FIN DE LA CORRECCIÓN ---
+
 # ===========================
 # Mapa (usando un solo GeoJson con style_function)
 # ===========================
