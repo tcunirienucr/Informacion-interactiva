@@ -323,6 +323,9 @@ def preparar_datos_mapa_heatmap(_df_filtrado, _cantones_seleccionados, _columna_
 # Esta función crea el objeto 'm' y lo guarda en caché.
 # Solo se volverá a ejecutar si los datos de entrada (gdf_merged, df_detalle, etc.) cambian.
 @st.cache_resource
+# --- INICIA REEMPLAZO (generar_mapa_folium) ---
+
+@st.cache_resource
 def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_seleccionados, _nombre_amigable):
     m = folium.Map(location=[9.7489, -83.7534], zoom_start=8)
 
@@ -357,7 +360,6 @@ def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_selec
         caption='Cantidad de Beneficiarios (Escala por pasos)'
     )
 
-    # Este es el bucle lento que ahora está DENTRO de la función cacheada
     for _, row in _gdf_merged.iterrows():
         canton = row[_columna_mapa]
         cantidad_real_popup = row['cantidad_beneficiarios']
@@ -373,15 +375,20 @@ def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_selec
             color = colormap(cantidad_para_color)
             fill_opacity = 0.7
 
+        # --- INICIO DE CORRECCIÓN DE BUGS 1 y 2 ---
         detalles = _df_detalle[_df_detalle['CANTON_DEF'] == canton]
+        
+        # Lógica para 'detalles.empty' corregida
         if detalles.empty:
-            detalle_html += f"<li>{curso} ({d['AÑO']}): {d['conteo']} personas</li>"
+            detalle_html = "<i>0 beneficiarios (según filtros)</i>" if canton in _cantones_seleccionados else "<i>Cantón no seleccionado</i>"
         else:
             detalle_html = "<ul>"
             for _, d in detalles.iterrows():
                 curso = _nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
-                detalle_html += f"<li>{curso} ({int(d['AÑO'])}): {d['conteo']} personas</li>"
+                # Se eliminó int() para evitar el 'ValueError'
+                detalle_html += f"<li>{curso} ({d['AÑO']}): {d['conteo']} personas</li>"
             detalle_html += "</ul>"
+        # --- FIN DE CORRECCIÓN DE BUGS 1 y 2 ---
 
         popup_html = f"<strong>Cantón:</strong> {canton}<br>" \
                      f"<strong>Total de beneficiarios:</strong> {cantidad_real_popup if not pd.isnull(cantidad_real_popup) else '0'}<br>" \
@@ -403,6 +410,8 @@ def generar_mapa_folium(_gdf_merged, _df_detalle, _columna_mapa, _cantones_selec
     m.add_child(colormap)
     return m
 
+# --- FIN DE REEMPLAZO (generar_mapa_folium) ---
+
 # 3. Llamar a las funciones cacheadas en orden
 gdf_merged, df_detalle = preparar_datos_mapa_heatmap(df_filtrado, cantones_seleccionados, columna_mapa, gdf)
 mapa_generado = generar_mapa_folium(gdf_merged, df_detalle, columna_mapa, cantones_seleccionados, nombre_amigable)
@@ -411,14 +420,14 @@ mapa_generado = generar_mapa_folium(gdf_merged, df_detalle, columna_mapa, canton
 st_folium(mapa_generado, width=700, height=500, returned_objects=[])
 
 
+# --- INICIA REEMPLAZO (EXPANDER "SIN DATO") ---
+
 # ===============================
 # EXPANDER "SIN DATO" (Corregido)
 # ===============================
 df_sin_dato = df_filtrado[df_filtrado['CANTON_DEF'] == "Sin dato"]
 total_sin_dato = len(df_sin_dato)
 
-# --- CORRECCIÓN DE BUG ---
-# Cambiado de >= 0 a > 0 para que no se muestre si hay 0
 if total_sin_dato > 0:
     with st.expander(f"ℹ️ **Observaciones 'Sin dato' (fuera del mapa): {total_sin_dato} personas**"):
         
@@ -432,9 +441,15 @@ if total_sin_dato > 0:
             detalle_html = "<ul>"
             for _, d in detalles_sin_dato.iterrows():
                 curso = nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
-                detalle_html += f"<li>{curso} ({int(d['AÑO'])}): {d['conteo']} personas</li>"
+                
+                # --- CORRECCIÓN DE BUG 3 ---
+                # Se eliminó int() para evitar el 'ValueError'
+                detalle_html += f"<li>{curso} ({d['AÑO']}): {d['conteo']} personas</li>"
+                
             detalle_html += "</ul>"
             st.markdown(detalle_html, unsafe_allow_html=True)
+
+# --- FIN DE REEMPLAZO (EXPANDER "SIN DATO") ---
 
 # ===============================
 # ESTADÍSTICAS DESCRIPTIVAS (Optimizadas)
