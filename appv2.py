@@ -222,6 +222,7 @@ except Exception as e:
     st.stop()
 
 # --- REEMPLAZA TODA LA SECCIÓN "with st.sidebar:" CON ESTO ---
+# --- REEMPLAZA TODA LA SECCIÓN "with st.sidebar:" CON ESTO ---
 
 with st.sidebar:
     st.title("Filtros Globales")
@@ -231,23 +232,29 @@ with st.sidebar:
     cursos_filtrables_amigables = [nombre_amigable[c] for c in cursos_filtrables_normalizados]
     opciones_cursos_widget = ["Todos"] + cursos_filtrables_amigables
     
-    # Inicializar el estado de la sesión si no existe
+    # 1. Inicializar el estado
     if 'seleccion_cursos' not in st.session_state:
         st.session_state.seleccion_cursos = ["Todos"]
     
-    seleccion_cursos_cruda = st.multiselect(
+    # 2. Dibujar el widget usando 'key' en lugar de 'default'
+    #    'key' vincula el widget a st.session_state.seleccion_cursos
+    st.multiselect(
         "Cursos", 
         opciones_cursos_widget, 
-        default=st.session_state.seleccion_cursos # Usar el estado como default
+        key='seleccion_cursos' # <- CAMBIO CLAVE
     )
     
-    # Procesar la selección
-    st.session_state.seleccion_cursos, cursos_seleccionados_amigables = procesar_filtro_todos(
-        seleccion_cursos_cruda, 
+    # 3. Procesar el valor que AHORA está en el state (que es el valor "crudo" del widget)
+    seleccion_limpia, cursos_seleccionados_amigables = procesar_filtro_todos(
+        st.session_state.seleccion_cursos, # <- Leer el valor crudo del state
         cursos_filtrables_amigables
     )
     
-    # Mapeo inverso de nombres amigables a normalizados (para el filtro del df)
+    # 4. SOBRESCRIBIR el state con el valor limpio
+    #    Esto fuerza una recarga si el valor cambió (ej. de ["Todos", "Eco"] a ["Eco"])
+    st.session_state.seleccion_cursos = seleccion_limpia
+    
+    # 5. Mapeo inverso (esto no cambia)
     if "Todos" in st.session_state.seleccion_cursos:
         cursos_filtrados = cursos_filtrables_normalizados
     else:
@@ -261,16 +268,17 @@ with st.sidebar:
     if 'seleccion_anios' not in st.session_state:
         st.session_state.seleccion_anios = ["Todos"]
         
-    seleccion_anios_cruda = st.multiselect(
+    st.multiselect(
         "Años", 
         opciones_anios_widget, 
-        default=st.session_state.seleccion_anios
+        key='seleccion_anios' # <- CAMBIO CLAVE
     )
     
-    st.session_state.seleccion_anios, anios_seleccionados = procesar_filtro_todos(
-        seleccion_anios_cruda, 
+    seleccion_limpia_anios, anios_seleccionados = procesar_filtro_todos(
+        st.session_state.seleccion_anios, 
         anios_disponibles
     )
+    st.session_state.seleccion_anios = seleccion_limpia_anios
 
     # ===== Cantones =====
     cantones_disponibles = sorted(gdf[columna_mapa].dropna().unique())
@@ -279,19 +287,19 @@ with st.sidebar:
     if 'seleccion_cantones' not in st.session_state:
         st.session_state.seleccion_cantones = ["Todos"]
         
-    seleccion_cantones_cruda = st.multiselect(
+    st.multiselect(
         "Cantones", 
         opciones_cantones_widget, 
-        default=st.session_state.seleccion_cantones
+        key='seleccion_cantones' # <- CAMBIO CLAVE
     )
     
-    st.session_state.seleccion_cantones, cantones_seleccionados = procesar_filtro_todos(
-        seleccion_cantones_cruda, 
+    seleccion_limpia_cantones, cantones_seleccionados = procesar_filtro_todos(
+        st.session_state.seleccion_cantones, 
         cantones_disponibles
     )
+    st.session_state.seleccion_cantones = seleccion_limpia_cantones
 
-    # ===== Certificados =====
-    # Este filtro no usa "Todos", así que se queda como estaba
+    # ===== Certificados (Sin cambios, ya que no usa "Todos") =====
     certificados_disponibles = sorted(df["CERTIFICADO"].dropna().unique())
     certificados_seleccionados = st.multiselect(
         "Certificado",
@@ -309,16 +317,17 @@ with st.sidebar:
     if 'seleccion_edades' not in st.session_state:
         st.session_state.seleccion_edades = ["Todos"]
         
-    seleccion_edades_cruda = st.multiselect(
+    st.multiselect(
         "Grupo de Edad", 
         opciones_edades_widget, 
-        default=st.session_state.seleccion_edades
+        key='seleccion_edades' # <- CAMBIO CLAVE
     )
     
-    st.session_state.seleccion_edades, edades_seleccionadas = procesar_filtro_todos(
-        seleccion_edades_cruda, 
+    seleccion_limpia_edades, edades_seleccionadas = procesar_filtro_todos(
+        st.session_state.seleccion_edades, 
         edades_disponibles
     )
+    st.session_state.seleccion_edades = seleccion_limpia_edades
 
     # ===== Sexo =====
     sexos_disponibles = sorted(df['SEXO_NORMALIZADO'].dropna().unique())
@@ -327,16 +336,17 @@ with st.sidebar:
     if 'seleccion_sexos' not in st.session_state:
         st.session_state.seleccion_sexos = ["Todos"]
         
-    seleccion_sexos_cruda = st.multiselect(
+    st.multiselect(
         "Sexo", 
         opciones_sexos_widget, 
-        default=st.session_state.seleccion_sexos
+        key='seleccion_sexos' # <- CAMBIO CLAVE
     )
     
-    st.session_state.seleccion_sexos, sexos_seleccionados = procesar_filtro_todos(
-        seleccion_sexos_cruda, 
+    seleccion_limpia_sexos, sexos_seleccionados = procesar_filtro_todos(
+        st.session_state.seleccion_sexos, 
         sexos_disponibles
     )
+    st.session_state.seleccion_sexos = seleccion_limpia_sexos
 
 # --- FIN DEL REEMPLAZO DEL SIDEBAR ---
 
