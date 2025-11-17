@@ -238,7 +238,39 @@ m.add_child(colormap)
 # 6. Mostrar el mapa en Streamlit
 st_folium(m, width=800, height=600)
 
+# --- INICIO DEL BLOQUE DE CÓDIGO DE OBSERVACIONES SIN DATO DE CANTÓN ---
 
+# ===============================
+# Mostrar observaciones "Sin dato" (fuera del mapa)
+# ===============================
+
+# 1. Filtrar los datos 'Sin dato' del dataframe principal ya filtrado
+df_sin_dato = df_filtrado[df_filtrado['CANTON_DEF'] == "Sin dato"]
+total_sin_dato = len(df_sin_dato)
+
+# 2. Solo mostrar el expander si hay datos 'Sin dato'
+if total_sin_dato > 0:
+    with st.expander(f"ℹ️ **Observaciones 'Sin dato' (fuera del mapa): {total_sin_dato} personas**"):
+        
+        # 3. Obtener el detalle desde el dataframe 'df_detalle' que ya calculamos para el mapa
+        detalles_sin_dato = df_detalle[df_detalle['CANTON_DEF'] == "Sin dato"]
+        
+        if detalles_sin_dato.empty:
+            st.write("No se encontró detalle para las observaciones 'Sin dato'.")
+        else:
+            st.markdown("<strong>Detalle por curso y año:</strong>", unsafe_allow_html=True)
+            
+            # 4. Reutilizar la misma lógica de los popups del mapa para generar la lista
+            detalle_html = "<ul>"
+            for _, d in detalles_sin_dato.iterrows():
+                # Usamos el diccionario 'nombre_amigable'
+                curso = nombre_amigable.get(d['CURSO_NORMALIZADO'], d['CURSO_NORMALIZADO'].title())
+                detalle_html += f"<li>{curso} ({int(d['AÑO'])}): {d['conteo']} personas</li>"
+            detalle_html += "</ul>"
+            
+            st.markdown(detalle_html, unsafe_allow_html=True)
+
+# --- FIN DEL BLOQUE DE OBSERVACIONES SIN DATO DE CANTÓN ---
 
 
 
